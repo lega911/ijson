@@ -2,6 +2,7 @@
 #include "rpc.h"
 #include <string.h>
 #include <uuid/uuid.h>
+#include "utils.h"
 
 
 void Connect::on_recv(char *buf, int size) {
@@ -34,7 +35,7 @@ void Connect::on_recv(char *buf, int size) {
             };
             if(data.size()) {
                 buffer.add(data);
-                throw "Not implemented: next request";
+                throw error::not_implemented("Next request");
             }
             //print2("header_completed", path);
             this->header_completed();

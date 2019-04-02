@@ -30,7 +30,7 @@ void test_json2019() {
 
 int main(int argc, char** argv) {
     std::cout << "Start server!\n";
-    
+
     RpcServer server;
     try {
         server.start(8001);

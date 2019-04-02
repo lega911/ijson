@@ -12,8 +12,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "utils.h"
-
 
 #define eitem struct epoll_event
 #define MAX_EVENTS 16384
@@ -171,7 +169,14 @@ void TcpServer::loop() {
                         throw "connection item already in use";
                     }
                     printf("connect %d\n", fd);
-                    IConnect* conn = this->on_connect(fd);
+                    IConnect* conn;
+                    try {
+                        conn = this->on_connect(fd);
+                    } catch (Exception &e) {
+                        std::cout << "Exception on_connect: " << e.get_msg() << std::endl;
+                        close(fd);
+                        continue;
+                    }
                     this->connections[fd] = conn;
 
                     eitem event = {0};
@@ -197,7 +202,12 @@ void TcpServer::loop() {
                             throw "recv error";
                         }
                     } else {
-                        conn->on_recv(buf, size);
+                        try {
+                            conn->on_recv(buf, size);
+                        } catch (Exception &e) {
+                            std::cout << "Exception on_recv: " << e.get_msg() << std::endl;
+                            conn->close();
+                        }
                         if(conn->is_closed()) {
                             _close(fd);
                             continue;
@@ -207,7 +217,12 @@ void TcpServer::loop() {
                     // Ready for writing.
                     int fd = events[i].data.fd;
                     IConnect* conn=this->connections[fd];
-                    conn->on_send();
+                    try {
+                        conn->on_send();
+                    } catch (Exception &e) {
+                        std::cout << "Exception on_send: " << e.get_msg() << std::endl;
+                        conn->close();
+                    }
                     if(conn->is_closed()) {
                         _close(fd);
                         continue;

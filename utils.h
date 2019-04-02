@@ -10,22 +10,8 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-class Exception {
-public:
-    static const int DATA_ERROR = 21;
-    static const int NO_DATA = 22;
+#include "exception.h"
 
-    int code;
-    const char *msg;
-    Exception() : code(0), msg(NULL) {};
-    Exception(int code) : code(code), msg(NULL) {};
-    Exception(int code, const char *msg) : code(code), msg(msg) {};
-    const char *get_msg() {
-        if(msg) return msg;
-        if(code == DATA_ERROR) return "Data error";
-        return "Unknown error";
-    }
-};
 
 class Slice;
 class Buffer;
