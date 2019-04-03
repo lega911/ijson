@@ -49,7 +49,7 @@ public:
     void header_completed();
     void send(const char *http_status);
     void send(const char *http_status, Buffer *body);
-    void send(const char *http_status, Buffer *id,  Buffer *body);
+    void send(const char *http_status, ISlice *id,  Buffer *body);
     void on_send();
 };
 
@@ -79,8 +79,8 @@ public:
     };
     
     void add_worker(Slice name, Connect *worker);
-    int client_request(string &name, Connect *client, Slice id);
-    int worker_result(Buffer *id, Connect *worker);
+    int client_request(ISlice name, Connect *client, Slice id);
+    int worker_result(ISlice id, Connect *worker);
 };
 
 

@@ -120,22 +120,22 @@ void Connect::header_completed() {
 
     RpcServer *server = (RpcServer*)this->server;
     
-    if(path.slice().equal("/echo")) {
+    if(this->path.equal("/echo")) {
         Buffer b;
         b.add("ok");
         this->send("200 OK", &b);
         return;
     }
 
-    Slice method = path.slice();
-    Slice name = this->name.slice();
-    Slice id = this->id.slice();
+    Slice method(this->path);
+    Slice name(this->name);
+    Slice id(this->id);
 
     if(method.equal("/rpc/call")) {
         JsonParser json;
-        json.parse_object(this->body.slice());
+        json.parse_object(this->body);
 
-        if(!json.method.valid()) throw Exception("Wrong body");
+        if(json.method.empty()) throw Exception("Wrong body");
         method = json.method;
 
         if(method.equal("/rpc/add")) {
@@ -152,14 +152,14 @@ void Connect::header_completed() {
     }
 
     if(method.equal("/rpc/add")) {
-        if(!name.valid() || name.empty()) {
+        if(name.empty()) {
             this->send("400 No name");
             return;
         }
         server->add_worker(name, this);
         return;
     } else if(method.equal("/rpc/result")) {
-        int r = server->worker_result(&this->id, this);
+        int r = server->worker_result(id, this);
         if(r == 0) {
             this->send("200 OK");
         } else {
@@ -170,8 +170,7 @@ void Connect::header_completed() {
         return;
     }
     
-    std::string key = method.as_string();
-    int r = server->client_request(key, this, id);
+    int r = server->client_request(method, this, id);
     if(r == 0) {
         status = STATUS_WAIT_RESPONSE;
     } else if(r == -1) {
@@ -189,7 +188,7 @@ void Connect::send(const char *http_status, Buffer *body) {
     this->send(http_status, NULL, body);
 }
 
-void Connect::send(const char *http_status, Buffer *id, Buffer *body) {
+void Connect::send(const char *http_status, ISlice *id, Buffer *body) {
     send_buffer.resize(256);
 
     //Buffer r(256);
@@ -250,10 +249,10 @@ void RpcServer::add_worker(Slice name, Connect *worker) {
         }
         break;
     }
-    
+
     if(client) {
         worker->send("200 OK", &client->id, &client->body);
-        wait_response[client->id.as_str()] = client;
+        wait_response[client->id.as_string()] = client;
         worker->status = STATUS_NET;
     } else {
         ml->workers.push_back(worker);
@@ -261,8 +260,8 @@ void RpcServer::add_worker(Slice name, Connect *worker) {
     }
 };
 
-int RpcServer::client_request(std::string &name, Connect *client, Slice id) {
-    MethodLine *ml = this->methods[name];
+int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
+    MethodLine *ml = this->methods[name.as_string()];
     if(ml == NULL) return -1;
     
     char _uuid[40];
@@ -273,8 +272,7 @@ int RpcServer::client_request(std::string &name, Connect *client, Slice id) {
         uuid_unparse_lower(uuid, _uuid);
         id.set(_uuid, 36);
     }
-    string id_str = client->id.as_str();
-    
+
     Connect *worker = NULL;
     while (ml->workers.size()) {
         worker = ml->workers.front();
@@ -289,8 +287,8 @@ int RpcServer::client_request(std::string &name, Connect *client, Slice id) {
     };
     if(worker) {
         // TODO: use right id
-        worker->send("200 OK", &client->id, &client->body);
-        wait_response[id_str] = client;
+        worker->send("200 OK", &id, &client->body);
+        wait_response[id.as_string()] = client;
         worker->status = STATUS_NET;
     } else {
         ml->clients.push_back(client);
@@ -298,14 +296,14 @@ int RpcServer::client_request(std::string &name, Connect *client, Slice id) {
     return 0;
 };
 
-int RpcServer::worker_result(Buffer *id, Connect *worker) {
-    string sid = id->as_str();
+int RpcServer::worker_result(ISlice id, Connect *worker) {
+    string sid = id.as_string();
     Connect *client = wait_response[sid];
     if(client == NULL) {
         return -1;
     }
     wait_response.erase(sid);
-    client->send("200 OK", id, &worker->body);
+    client->send("200 OK", &id, &worker->body);
     client->status = STATUS_NET;
     
     if(counter_active) {

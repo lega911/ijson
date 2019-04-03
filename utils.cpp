@@ -13,17 +13,13 @@ long get_time() {
     return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
 }
 
-void Buffer::set(Slice &s) {
+void Buffer::set(ISlice &s) {
     set(s.ptr(), s.size());
 }
 
-void Buffer::add(Slice &s) {
+void Buffer::add(ISlice &s) {
     add(s.ptr(), s.size());
 }
-
-Slice Buffer::slice() {
-    return Slice(data, p_len);
-};
 
 long last_time = 0;
 

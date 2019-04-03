@@ -10,7 +10,7 @@
 
 class JsonParser {
 private:
-    Slice buf;
+    ISlice buf;
     int index = 0;
     Slice read_string();
     Slice read_object();
@@ -30,7 +30,7 @@ public:
     Slice params;
     Slice name;
     
-    int parse_object(Slice buf);
+    int parse_object(ISlice buf);
 };
 
 #endif /* JSON_H */

@@ -1,7 +1,7 @@
 
 #include "json.h"
 
-int JsonParser::parse_object(Slice buf) {
+int JsonParser::parse_object(ISlice buf) {
     if(buf.size() < 10) throw Exception(Exception::DATA_ERROR);
     const char *ptr = buf.ptr();
     if(ptr[0] != '{') throw Exception(Exception::DATA_ERROR);

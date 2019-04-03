@@ -42,20 +42,20 @@ public:
         if(s[0] != _ptr[0]) return false;
 
         int len = strlen(s);
-        if(len > _size) return false;
+        if(len > size()) return false;
         return memcmp(ptr(), s, len) == 0;
     }
 
     bool equal(const char *s) {
         int len = strlen(s);
-        if(len != _size) return false;
-        return memcmp(s, _ptr, _size) == 0;
+        if(len != size()) return false;
+        return memcmp(s, _ptr, size()) == 0;
     }
 
     inline bool empty() {return size() == 0;}
     inline bool valid() {return _ptr != NULL;}
     inline char* ptr() {return _ptr;}
-    inline int size() {return _size;}
+    virtual inline int size() {return _size;}
     std::string as_string() {
         return as_string(5);
     }
@@ -82,6 +82,7 @@ public:
         _ptr = (char*)ptr;
         _size = size;
     }
+    Slice(ISlice &s) { set(s.ptr(), s.size()); };
     ~Slice() {
         _ptr = NULL;
         _size = 0;
@@ -129,54 +130,50 @@ public:
 };
 
 
-class Buffer {
-private:
-    int p_size;
-    int p_len;
-    char *data;
+class Buffer : public ISlice {
+protected:
+    int _len;
 public:
-    Buffer() {
-        p_size = 0;
-        p_len = 0;
-        data = NULL;
+    Buffer() : ISlice() {
+        _len = 0;
     };
-    Buffer(int size) {
-        p_size = 0;
-        p_len = 0;
-        data = NULL;
+    Buffer(int size) : ISlice() {
+        _len = 0;
         resize(size);
     };
     ~Buffer() {
-        if(data) free(data);
+        if(_ptr) free(_ptr);
     }
+    virtual inline int size() {return _len;}
+
     void resize(int size) {
-        if(data == NULL) {
-            p_len = 0;
-            p_size = size;
-            data = (char*)malloc(p_size);
-        } else if(size > p_size) {
-            p_size = size;
-            data = (char*)realloc(data, p_size);
+        if(_ptr == NULL) {
+            _len = 0;
+            _size = size;
+            _ptr = (char*)malloc(_size);
+        } else if(size > _size) {
+            _size = size;
+            _ptr = (char*)realloc(_ptr, _size);
         }
     }
     void resize(int size, int len) {
         resize(size);
-        p_len = len;
+        _len = len;
     }
     void add(const char *buf, int size) {
-        resize(p_len + size);
-        memcpy(&data[p_len], buf, size);
-        p_len += size;
+        resize(_len + size);
+        memcpy(&_ptr[_len], buf, size);
+        _len += size;
     }
-    void add(Slice &s);
+    void add(ISlice &s);
     void add(const char *s) {
         add(s, strlen(s));
     }
-    void add(Buffer *b) {
-        add(b->ptr(), b->size());
+    void add(ISlice *s) {
+        add(s->ptr(), s->size());
     }
     void add_number(int n) {
-        resize(p_len + 12);
+        resize(_len + 12);
         
         char s[12];
         int d;
@@ -202,27 +199,18 @@ public:
         clear();
         add(buf, size);
     }
-    void set(Slice &s);
+    void set(ISlice &s);
     void clear() {
-        p_len = 0;
+        _len = 0;
     }
     void remove_left(int n) {
         if(n <= 0) return;
-        if(p_len <= n) {
-            p_len = 0;
+        if(_len <= n) {
+            _len = 0;
         } else {
-            p_len -= n;
-            memcpy(&data[n], data, p_len);
+            _len -= n;
+            memcpy(&_ptr[n], _ptr, _len);
         }
-    }
-    char *ptr() {return data;}
-    int size() {return p_len;}
-    bool empty() {return p_len == 0;}
-    Slice slice();
-    std::string as_str() {
-        std::string s;
-        s.append(ptr(), size());
-        return s;
     }
 };
 
