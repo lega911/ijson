@@ -14,6 +14,7 @@ public:
     const char *msg;
     Exception() : code(0), msg(NULL) {};
     Exception(int code) : code(code), msg(NULL) {};
+    Exception(const char *msg) : code(0), msg(msg) {};
     Exception(int code, const char *msg) : code(code), msg(msg) {};
     const char *get_msg() {
         if(msg) return msg;

@@ -78,8 +78,8 @@ public:
         return new Connect(fd, this);
     };
     
-    void add_worker(Buffer &name, Connect *worker);
-    int client_request(string &name, Connect *client);
+    void add_worker(Slice name, Connect *worker);
+    int client_request(string &name, Connect *client, Slice id);
     int worker_result(Buffer *id, Connect *worker);
 };
 

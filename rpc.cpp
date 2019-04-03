@@ -3,6 +3,7 @@
 #include <string.h>
 #include <uuid/uuid.h>
 #include "utils.h"
+#include "json.h"
 
 
 void Connect::on_recv(char *buf, int size) {
@@ -126,15 +127,39 @@ void Connect::header_completed() {
         return;
     }
 
-    if(path.slice().equal("/rpc/add")) {
-        if(name.empty()) {
+    Slice method = path.slice();
+    Slice name = this->name.slice();
+    Slice id = this->id.slice();
+
+    if(method.equal("/rpc/call")) {
+        JsonParser json;
+        json.parse_object(this->body.slice());
+
+        if(!json.method.valid()) throw Exception("Wrong body");
+        method = json.method;
+
+        if(method.equal("/rpc/add")) {
+            if(name.empty() && json.params.valid()) {
+                JsonParser params;
+                params.parse_object(json.params);
+                name = params.name;
+            }
+        } else {
+            if(id.empty()) {
+                id = json.id;
+            }
+        }
+    }
+
+    if(method.equal("/rpc/add")) {
+        if(!name.valid() || name.empty()) {
             this->send("400 No name");
             return;
         }
         server->add_worker(name, this);
         return;
-    } else if(path.slice().equal("/rpc/result")) {
-        int r = server->worker_result(&id, this);
+    } else if(method.equal("/rpc/result")) {
+        int r = server->worker_result(&this->id, this);
         if(r == 0) {
             this->send("200 OK");
         } else {
@@ -145,8 +170,8 @@ void Connect::header_completed() {
         return;
     }
     
-    std::string key = path.as_str();
-    int r = server->client_request(key, this);
+    std::string key = method.as_string();
+    int r = server->client_request(key, this, id);
     if(r == 0) {
         status = STATUS_WAIT_RESPONSE;
     } else if(r == -1) {
@@ -206,8 +231,8 @@ void Connect::on_send() {
     }
 };
 
-void RpcServer::add_worker(Buffer &name, Connect *worker) {
-    std::string key = name.as_str();
+void RpcServer::add_worker(Slice name, Connect *worker) {
+    std::string key = name.as_string();
     MethodLine *ml = this->methods[key];
     if(ml == NULL) {
         ml = new MethodLine();
@@ -236,17 +261,19 @@ void RpcServer::add_worker(Buffer &name, Connect *worker) {
     }
 };
 
-int RpcServer::client_request(std::string &name, Connect *client) {
+int RpcServer::client_request(std::string &name, Connect *client, Slice id) {
     MethodLine *ml = this->methods[name];
     if(ml == NULL) return -1;
     
-    if(client->id.empty()) {
+    char _uuid[40];
+    if(id.empty()) {
         uuid_t uuid;
         uuid_generate_time_safe(uuid);
-        client->id.resize(37, 36);
-        uuid_unparse_lower(uuid, client->id.ptr());
+        //client->id.resize(37, 36);
+        uuid_unparse_lower(uuid, _uuid);
+        id.set(_uuid, 36);
     }
-    string id = client->id.as_str();
+    string id_str = client->id.as_str();
     
     Connect *worker = NULL;
     while (ml->workers.size()) {
@@ -261,8 +288,9 @@ int RpcServer::client_request(std::string &name, Connect *client) {
         break;
     };
     if(worker) {
+        // TODO: use right id
         worker->send("200 OK", &client->id, &client->body);
-        wait_response[id] = client;
+        wait_response[id_str] = client;
         worker->status = STATUS_NET;
     } else {
         ml->clients.push_back(client);
