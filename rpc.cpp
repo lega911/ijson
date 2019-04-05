@@ -292,6 +292,9 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
         worker->status = STATUS_NET;
     } else {
         ml->clients.push_back(client);
+        if(client->id.empty()) {
+            client->id.set(id);
+        }
     }
     return 0;
 };
