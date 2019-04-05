@@ -122,6 +122,18 @@ public:
 class Buffer : public ISlice {
 protected:
     int _cap;
+
+    int _get_cap(int size) {
+        int cap = 16;
+        int step = 16;
+        while(cap < size) {
+            cap += step;
+            if(step < 4096) {
+                step *= 2;
+            }
+        }
+        return cap;
+    }
 public:
     Buffer() : ISlice() {
         _cap = 0;
@@ -137,11 +149,11 @@ public:
 
     void resize(int size) {
         if(_ptr == NULL) {
-            _cap = size;
+            _cap = _get_cap(size);
             _size = 0;
             _ptr = (char*)malloc(_cap);
         } else if(size > _cap) {
-            _cap = size;
+            _cap = _get_cap(size);
             _ptr = (char*)realloc(_ptr, _cap);
         }
     }
@@ -150,7 +162,7 @@ public:
         _len = len;
     }*/
     void add(const char *buf, int size) {
-        resize(_cap + size);
+        resize(_size + size);
         memcpy(&_ptr[_size], buf, size);
         _size += size;
     }
