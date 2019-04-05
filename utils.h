@@ -2,8 +2,6 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#define _OPEN_SYS_ITOA_EXT
-
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
@@ -11,208 +9,14 @@
 #include <sys/types.h>
 
 #include "exception.h"
+#include "buffer.h"
 
-
-class Slice;
-class Buffer;
 
 long get_time();
 void print2(const char *title, const char *s, int size);
 void print2(const char *title, Buffer &b);
 void print2(const char *title);
 
-
-class ISlice {
-protected:
-    char *_ptr;
-    int _size;
-public:
-    ISlice() {
-        _ptr = NULL;
-        _size = 0;
-    }
-    ~ISlice() {
-        _ptr = NULL;
-        _size = 0;
-    }
-
-    bool starts_with(const char *s) {
-        if(s[0] == 0) return true;
-        if(size() == 0) return false;
-        if(s[0] != _ptr[0]) return false;
-
-        int len = strlen(s);
-        if(len > size()) return false;
-        return memcmp(ptr(), s, len) == 0;
-    }
-
-    bool equal(const char *s) {
-        int len = strlen(s);
-        if(len != size()) return false;
-        return memcmp(s, _ptr, size()) == 0;
-    }
-
-    inline bool empty() {return size() == 0;}
-    inline bool valid() {return _ptr != NULL;}
-    inline char* ptr() {return _ptr;}
-    virtual inline int size() {return _size;}
-    std::string as_string() {
-        return as_string(5);
-    }
-    std::string as_string(int _default) {
-        std::string s;
-        if(valid()) {
-            s.append(ptr(), size());
-        } else {
-            if(_default == 1) s.append("<empty>");
-            else if(_default != 0) throw Exception(Exception::NO_DATA, "Not valid slice");
-        }
-        return s;
-    }
-};
-
-
-class Slice : public ISlice {
-public:
-    Slice() {
-        _ptr = NULL;
-        _size = 0;
-    }
-    Slice(const char *ptr, int size) {
-        _ptr = (char*)ptr;
-        _size = size;
-    }
-    Slice(ISlice &s) { set(s.ptr(), s.size()); };
-    ~Slice() {
-        _ptr = NULL;
-        _size = 0;
-    }
-    void set(const char *ptr, int size) {
-        this->_ptr = (char*)ptr;
-        _size = size;
-    }
-    void clear() {
-        set(NULL, 0);
-    }
-
-    Slice get(int len) {
-        if(len > _size) throw "slice: len error";
-        return Slice(ptr(), len);
-    }
-    Slice pop(int len) {
-        Slice r = get(len);
-        _ptr += len;
-        _size -= len;
-        return r;
-    }
-
-    void remove(int len) {
-        if(len > size()) len = size();
-        _ptr += len;
-        _size -= len;
-    }
-            
-    Slice pop_line() {
-        for(int i=0;i<size();i++) {
-            if(_ptr[i] != '\n') continue;
-            return pop(i + 1);
-        }
-        return Slice(NULL, 0);
-    }
-    void rstrip() {
-        int i=_size-1;
-        for(;i>=0;i--) {
-            if(_ptr[i] == ' ' || _ptr[i] == '\n' || _ptr[i] == '\r') continue;
-            break;
-        }
-        _size = i + 1;
-    }
-};
-
-
-class Buffer : public ISlice {
-protected:
-    int _len;
-public:
-    Buffer() : ISlice() {
-        _len = 0;
-    };
-    Buffer(int size) : ISlice() {
-        _len = 0;
-        resize(size);
-    };
-    ~Buffer() {
-        if(_ptr) free(_ptr);
-    }
-    virtual inline int size() {return _len;}
-
-    void resize(int size) {
-        if(_ptr == NULL) {
-            _len = 0;
-            _size = size;
-            _ptr = (char*)malloc(_size);
-        } else if(size > _size) {
-            _size = size;
-            _ptr = (char*)realloc(_ptr, _size);
-        }
-    }
-    void resize(int size, int len) {
-        resize(size);
-        _len = len;
-    }
-    void add(const char *buf, int size) {
-        resize(_len + size);
-        memcpy(&_ptr[_len], buf, size);
-        _len += size;
-    }
-    void add(ISlice &s);
-    void add(const char *s) {
-        add(s, strlen(s));
-    }
-    void add(ISlice *s) {
-        add(s->ptr(), s->size());
-    }
-    void add_number(int n) {
-        resize(_len + 12);
-        
-        char s[12];
-        int d;
-        int i=11;
-        bool negative = false;
-        if(n == 0) {
-            s[i--] = '0';
-        } else if(n < 0) {
-            n = -n;
-            negative = true;
-        }
-        while(n) {
-            d = n % 10;
-            s[i--] = d + '0';
-            n = n / 10;
-        }
-        if(negative) {
-            s[i--] = '-';
-        }
-        add(&s[i + 1], 11 - i);
-    }
-    void set(const char *buf, int size) {
-        clear();
-        add(buf, size);
-    }
-    void set(ISlice &s);
-    void clear() {
-        _len = 0;
-    }
-    void remove_left(int n) {
-        if(n <= 0) return;
-        if(_len <= n) {
-            _len = 0;
-        } else {
-            _len -= n;
-            memcpy(&_ptr[n], _ptr, _len);
-        }
-    }
-};
 
 #endif /* UTILS_H */
 
