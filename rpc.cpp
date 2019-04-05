@@ -177,6 +177,8 @@ void Connect::header_completed() {
         this->send("404 Not Found");
     } else if(r == -2) {
         this->send("400 No Id");
+    } else if(r == -3) {
+        this->send("400 Collision Id");
     }
 }
 
@@ -238,6 +240,7 @@ void RpcServer::add_worker(Slice name, Connect *worker) {
         this->methods[key] = ml;
     }
     Connect *client = NULL;
+    string sid;
     while(ml->clients.size()) {
         client = ml->clients.front();
         ml->clients.pop_front();
@@ -247,12 +250,20 @@ void RpcServer::add_worker(Slice name, Connect *worker) {
             client = NULL;
             continue;
         }
+        sid = client->id.as_string();
+        if(wait_response[sid] != NULL) {
+            // colision id
+            client->send("400 Collision Id");
+            client->status = STATUS_NET;
+            client = NULL;
+            continue;
+        }
         break;
     }
 
     if(client) {
         worker->send("200 OK", &client->id, &client->body);
-        wait_response[client->id.as_string()] = client;
+        wait_response[sid] = client;
         worker->status = STATUS_NET;
     } else {
         ml->workers.push_back(worker);
@@ -286,9 +297,13 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
         break;
     };
     if(worker) {
-        // TODO: use right id
+        string sid = id.as_string();
+        if(wait_response[sid] != NULL) {
+            ml->workers.push_front(worker);
+            return -3;
+        }
         worker->send("200 OK", &id, &client->body);
-        wait_response[id.as_string()] = client;
+        wait_response[sid] = client;
         worker->status = STATUS_NET;
     } else {
         ml->clients.push_back(client);
