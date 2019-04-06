@@ -141,9 +141,14 @@ void TcpServer::loop() {
     }
 
     char *buf = (char*)calloc(BUF_SIZE, 1);
-
-    while (1) {
+    int attempt = 10;
+    while (attempt--) {
         int nready = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+        if(nready == -1) {
+            std::cout << "epoll_wait error: " << errno << std::endl;
+            continue;
+        }
+        attempt = 10;
         for (int i = 0; i < nready; i++) {
             if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP) {
                 printf("epoll_wait returned EPOLLERR/EPOLLHUP (%d): %d\n", events[i].events, events[i].data.fd);
