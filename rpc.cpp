@@ -22,7 +22,7 @@ void Connect::on_recv(char *buf, int size) {
         line.rstrip();
 
         if(line.empty()) {
-            step = NET_REQUEST_COMPLETED;
+            http_step = HTTP_REQUEST_COMPLETED;
             if(content_length) {
                 int for_read = content_length;
                 if(for_read > data.size()) for_read = data.size();
@@ -30,7 +30,7 @@ void Connect::on_recv(char *buf, int size) {
                 body.set(body_data);
 
                 if(body.size() < content_length) {
-                    step = NET_READ_BODY;
+                    http_step = HTTP_READ_BODY;
                 };
             };
             if(data.size()) {
@@ -41,7 +41,7 @@ void Connect::on_recv(char *buf, int size) {
             this->header_completed();
             break;
         }
-        if(step == NET_START) {
+        if(http_step == HTTP_START) {
             body.clear();
             id.clear();
             content_length = 0;
@@ -50,20 +50,20 @@ void Connect::on_recv(char *buf, int size) {
                 this->close();
                 return;
             }
-            step = NET_HEADER;
-        } else if(step == NET_HEADER) {
+            http_step = HTTP_HEADER;
+        } else if(http_step == HTTP_HEADER) {
             this->read_header(line);
         }
 
         //if(!line.empty()) print2("line", line.ptr(), line.size());
     }
 
-    if(step == NET_REQUEST_COMPLETED) {
-        step = NET_START;
-    } else if(step == NET_READ_BODY) {
-        throw "Not implemented: body is not read";
+    if(http_step == HTTP_REQUEST_COMPLETED) {
+        http_step = HTTP_START;
+    } else if(http_step == HTTP_READ_BODY) {
+        throw error::not_implemented("Not implemented: body is not read");
     } else {
-        throw "Error reading http header";
+        throw Exception(31, "Error reading http header");
     }
 };
 

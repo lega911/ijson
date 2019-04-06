@@ -11,10 +11,10 @@
 
 using namespace std;
 
-#define NET_START 0
-#define NET_HEADER 1
-#define NET_READ_BODY 2
-#define NET_REQUEST_COMPLETED 3
+#define HTTP_START 0
+#define HTTP_HEADER 1
+#define HTTP_READ_BODY 2
+#define HTTP_REQUEST_COMPLETED 3
 
 #define STATUS_NET 21
 #define STATUS_WAIT_JOB 22
@@ -23,7 +23,7 @@ using namespace std;
 
 class Connect : public IConnect {
 private:
-    int step;
+    int http_step;
     int content_length;
     int http_version;  // 10, 11
     bool keep_alive;
@@ -38,7 +38,7 @@ public:
     Buffer id;
 
     Connect(int fd, TcpServer *server) : IConnect(fd, server) {
-        step = NET_START;
+        http_step = HTTP_START;
         status = STATUS_NET;
     }
     void on_recv(char *buf, int size);
