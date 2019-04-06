@@ -13,6 +13,12 @@ long get_time() {
     return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
 }
 
+long get_time_sec() {
+    struct timeval currentTime;
+    gettimeofday(&currentTime, NULL);
+    return currentTime.tv_sec;
+}
+
 long last_time = 0;
 
 void print2(const char *title, const char *s, int size) {

@@ -147,20 +147,20 @@ public:
         _ptr = NULL;
     }
 
-    void resize(int size) {
+    void resize(int capacity) {
         if(_ptr == NULL) {
-            _cap = _get_cap(size);
+            _cap = _get_cap(capacity);
             _size = 0;
             _ptr = (char*)malloc(_cap);
-        } else if(size > _cap) {
-            _cap = _get_cap(size);
+        } else if(capacity > _cap) {
+            _cap = _get_cap(capacity);
             _ptr = (char*)realloc(_ptr, _cap);
         }
     }
-    /*void resize(int size, int len) {
-        resize(size);
-        _len = len;
-    }*/
+    void resize(int capacity, int size) {
+        resize(capacity);
+        _size = size;
+    }
     void add(const char *buf, int size) {
         resize(_size + size);
         memcpy(&_ptr[_size], buf, size);

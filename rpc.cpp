@@ -160,8 +160,14 @@ void Connect::header_completed() {
         }
         status = STATUS_NET;
         return;
+    } else if(method.equal("/rpc/details")) {
+        send_details();
+        return;
+    } else if(method.equal("/rpc/help")) {
+        send_help();
+        return;
     }
-    
+
     int r = server->client_request(method, this, id);
     if(r == 0) {
         status = STATUS_WAIT_RESPONSE;
@@ -252,6 +258,7 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
         ml = new MethodLine();
         this->methods[key] = ml;
     }
+    ml->last_worker = get_time_sec();
     Connect *client = NULL;
     string sid;
     while(ml->clients.size()) {
@@ -373,3 +380,39 @@ int RpcServer::worker_result(ISlice id, Connect *worker) {
 
     return 0;
 };
+
+void Connect::send_details() {
+    RpcServer *server = (RpcServer*)this->server;
+    Buffer res(256);
+    res.add("{");
+    for(const auto &it : server->methods) {
+        string name = it.first;
+        MethodLine *ml = it.second;
+        res.add("\"");
+        res.add(name.data(), name.size());
+        res.add("\":{\"last_worker\":");
+        res.add_number(ml->last_worker);
+        res.add(",\"workers\":");
+        res.add_number(ml->workers.size());
+        res.add(",\"clients\":");
+        res.add_number(ml->clients.size());
+        res.add("},\n");
+    };
+    if(res.size() > 2) res.resize(0, res.size() - 2);
+    res.add("}");
+    send("200 OK", &res);
+}
+
+void Connect::send_help() {
+    RpcServer *server = (RpcServer*)this->server;
+    Buffer res(256);
+    for(const auto &it : server->methods) {
+        string name = it.first;
+        MethodLine *ml = it.second;
+        res.add(name.data(), name.size());
+        res.add("  x ");
+        res.add_number(ml->workers.size());
+        res.add("\n");
+    }
+    send("200 OK", &res);
+}

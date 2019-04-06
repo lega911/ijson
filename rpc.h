@@ -44,6 +44,8 @@ public:
     void on_recv(char *buf, int size);
     int read_method(Slice &line);
     void read_header(Slice &data);
+    void send_details();
+    void send_help();
 
     void header_completed();
     void send(const char *http_status);
@@ -54,6 +56,7 @@ public:
 
 class MethodLine {
 public:
+    long last_worker;
     std::deque<Connect*> workers;
     std::deque<Connect*> clients;
 };
