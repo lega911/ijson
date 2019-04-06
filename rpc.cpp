@@ -389,7 +389,7 @@ void Connect::send_details() {
         string name = it.first;
         MethodLine *ml = it.second;
         res.add("\"");
-        res.add(name.data(), name.size());
+        res.add(name);
         res.add("\":{\"last_worker\":");
         res.add_number(ml->last_worker);
         res.add(",\"workers\":");
@@ -409,7 +409,7 @@ void Connect::send_help() {
     for(const auto &it : server->methods) {
         string name = it.first;
         MethodLine *ml = it.second;
-        res.add(name.data(), name.size());
+        res.add(name);
         res.add("  x ");
         res.add_number(ml->workers.size());
         res.add("\n");

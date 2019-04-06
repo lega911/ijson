@@ -137,9 +137,11 @@ protected:
 public:
     Buffer() : ISlice() {
         _cap = 0;
+        _size = 0;
     };
     Buffer(int size) : ISlice() {
         _cap = 0;
+        _size = 0;
         resize(size);
     };
     ~Buffer() {
@@ -150,7 +152,6 @@ public:
     void resize(int capacity) {
         if(_ptr == NULL) {
             _cap = _get_cap(capacity);
-            _size = 0;
             _ptr = (char*)malloc(_cap);
         } else if(capacity > _cap) {
             _cap = _get_cap(capacity);
@@ -161,17 +162,27 @@ public:
         resize(capacity);
         _size = size;
     }
+
     void add(const char *buf, int size) {
         resize(_size + size);
         memcpy(&_ptr[_size], buf, size);
         _size += size;
     }
-    void add(ISlice &s);
-    void add(const char *s) {
-        add(s, strlen(s));
+    void add(std::string &s) {
+        add(s.data(), s.size());
+    }
+    void add(ISlice &s) {
+        add(s.ptr(), s.size());
     }
     void add(ISlice *s) {
         add(s->ptr(), s->size());
+    }
+    void add(const char *i) {
+        while(*i != 0) {
+            if(_size >= _cap) resize(_size + 1);
+            _ptr[_size++] = *i;
+            i++;
+        }
     }
     void add_number(int n) {
         resize(_size + 12);
@@ -200,7 +211,9 @@ public:
         clear();
         add(buf, size);
     }
-    void set(ISlice &s);
+    void set(ISlice &s) {
+        set(s.ptr(), s.size());
+    }
     void clear() {
         _size = 0;
     }
