@@ -31,7 +31,6 @@ private:
     Buffer send_buffer;
 
     Buffer path;
-    //Buffer method;
     Buffer name;
 public:
     int status;
@@ -60,6 +59,8 @@ public:
 };
 
 class RpcServer : public TcpServer {
+private:
+    int _add_worker(ISlice name, Connect *worker);
 public:
     std::map<std::string, MethodLine*> methods;
     std::map<std::string, Connect*> wait_response;
@@ -78,7 +79,7 @@ public:
         return new Connect(fd, this);
     };
     
-    void add_worker(Slice name, Connect *worker);
+    void add_worker(ISlice name, Connect *worker);
     int client_request(ISlice name, Connect *client, Slice id);
     int worker_result(ISlice id, Connect *worker);
 };

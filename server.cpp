@@ -104,29 +104,35 @@ void TcpServer::set_poll_mode(int fd, int status) {
 
 void IConnect::write_mode(bool active) {
     if(active) {
-        if(status & 2) return;
-        status |= 2;
+        if(_socket_status & 2) return;
+        _socket_status |= 2;
     } else {
-        if(!(status & 2)) return;
-        status = status & 0xfd;
+        if(!(_socket_status & 2)) return;
+        _socket_status = _socket_status & 0xfd;
     }
-    server->set_poll_mode(fd, status);
+    server->set_poll_mode(fd, _socket_status);
 }
 
 void IConnect::read_mode(bool active) {
     if(active) {
-        if(status & 1) return;
-        status |= 1;
+        if(_socket_status & 1) return;
+        _socket_status |= 1;
     } else {
-        if(!(status & 1)) return;
-        status = status & 0xfe;
+        if(!(_socket_status & 1)) return;
+        _socket_status = _socket_status & 0xfe;
     }
-    server->set_poll_mode(fd, status);
+    server->set_poll_mode(fd, _socket_status);
 }
 
 int IConnect::raw_send(const void *buf, uint size) {
     return ::send(this->fd, buf, size, 0);
 }
+
+void IConnect::unlink() {
+    _link--;
+    if(_link == 0) this->server->dead_connections.push_back(this);
+    else if(_link < 0) throw "Wrong link count";
+};
 
 void TcpServer::loop() {
     eitem* events = (eitem*)calloc(MAX_EVENTS, sizeof(eitem));
@@ -168,7 +174,6 @@ void TcpServer::loop() {
                     if(this->connections[fd]) {
                         throw "connection item already in use";
                     }
-                    printf("connect %d\n", fd);
                     IConnect* conn;
                     try {
                         conn = this->on_connect(fd);
@@ -178,6 +183,9 @@ void TcpServer::loop() {
                         continue;
                     }
                     this->connections[fd] = conn;
+                    conn->link();
+
+                    std::cout << "connect " << fd << " " << (void*)conn << std::endl;
 
                     eitem event = {0};
                     event.data.fd = fd;
@@ -231,14 +239,28 @@ void TcpServer::loop() {
             }
             
         }
+
+        // delete dead connections
+        if(dead_connections.size()) {
+            for(IConnect *conn : dead_connections) {
+                if(conn->get_link() == 0) {
+                    std::cout << "delete " << (void*)conn << std::endl;
+                    delete conn;
+                }
+            }
+            dead_connections.clear();
+        }
+
     }
 }
 
 void TcpServer::_close(int fd) {
-    std::cout << "disconnect socket " << fd << std::endl;
     IConnect* conn=this->connections[fd];
+    std::cout << "disconnect socket " << fd << " " << (void*)conn << std::endl;
     if(conn == NULL) throw "connection is null";
+    conn->close();
     this->on_disconnect(conn);
+    conn->unlink();
     this->connections[fd] = NULL;
     this->set_poll_mode(fd, -1);
     close(fd);

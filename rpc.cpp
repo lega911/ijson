@@ -7,7 +7,6 @@
 
 
 void Connect::on_recv(char *buf, int size) {
-    //print2("on_recv");
     if(status != STATUS_NET) {
         print2("!STATUS_NET", buf, size);
         buffer.add(buf, size);
@@ -44,6 +43,7 @@ void Connect::on_recv(char *buf, int size) {
         }
         if(step == NET_START) {
             body.clear();
+            id.clear();
             content_length = 0;
             if(this->read_method(line) != 0) {
                 cout << "Wrong http header\n";  // TODO: close socket
@@ -87,38 +87,29 @@ int Connect::read_method(Slice &line) {
     if(buf[line.size() - 1] == '1') http_version = 11;
     else http_version = 10;
 
-    if(path.size() == 0) return -1;
-    //print2("path", path);
+    if(path.empty()) return -1;
     return 0;
 }
 
 void Connect::read_header(Slice &data) {
-    // Content-Length: 57
-    // Id: x15
-    // Name: /domain/add
     if(data.starts_with("Content-Length: ")) {
         data.remove(16);
         content_length = 0;
         for(int i=0;i<data.size();i++) {
             content_length = content_length * 10 + data.ptr()[i] - '0';
         }
-        //print2("Content-Length", data.ptr(), data.size());
     } else if(data.starts_with("Name: ")) {
         data.remove(6);
         name.set(data);
-        //print2("Name", data.ptr(), data.size());
     } else if(data.starts_with("Id: ")) {
         data.remove(4);
         id.set(data);
-        //print2("Id", data.ptr(), data.size());
     }
 }
 
 
 void Connect::header_completed() {
     this->keep_alive = http_version == 11;
-
-    RpcServer *server = (RpcServer*)this->server;
     
     if(this->path.equal("/echo")) {
         Buffer b;
@@ -151,6 +142,7 @@ void Connect::header_completed() {
         }
     }
 
+    RpcServer *server = (RpcServer*)this->server;
     if(method.equal("/rpc/add")) {
         if(name.empty()) {
             this->send("400 No name");
@@ -232,7 +224,28 @@ void Connect::on_send() {
     }
 };
 
-void RpcServer::add_worker(Slice name, Connect *worker) {
+void RpcServer::add_worker(ISlice name, Connect *worker) {
+    char *ptr = name.ptr();
+    int start = 0;
+    int i = 0;
+    Slice n;
+    for(;i<name.size();i++) {
+        if(ptr[i] == ',') {
+            n.set(&ptr[start], i - start);
+            start = i + 1;
+            if(_add_worker(n, worker) == 1) {
+                // worker is taken
+                return;
+            }
+        }
+    }
+    if(start < name.size()) {
+        n.set(&ptr[start], i - start);
+        _add_worker(n, worker);
+    }
+}
+
+int RpcServer::_add_worker(ISlice name, Connect *worker) {
     std::string key = name.as_string();
     MethodLine *ml = this->methods[key];
     if(ml == NULL) {
@@ -244,6 +257,7 @@ void RpcServer::add_worker(Slice name, Connect *worker) {
     while(ml->clients.size()) {
         client = ml->clients.front();
         ml->clients.pop_front();
+        client->unlink();
         if(client->is_closed() || client->status != STATUS_WAIT_RESPONSE) {
             // TODO: close wrong connection?
             std::cout << "dead client\n";
@@ -264,10 +278,27 @@ void RpcServer::add_worker(Slice name, Connect *worker) {
     if(client) {
         worker->send("200 OK", &client->id, &client->body);
         wait_response[sid] = client;
+        client->link();
         worker->status = STATUS_NET;
+        return 1;
     } else {
+        if (ml->workers.size()) {
+            auto it=ml->workers.begin();
+            while (it != ml->workers.end()) {
+                Connect *conn = *it;
+                if(conn->is_closed() || conn == worker) {
+                    it = ml->workers.erase(it);
+                    conn->unlink();
+                } else {
+                    it++;
+                }
+            }
+        }
+
         ml->workers.push_back(worker);
+        worker->link();
         worker->status = STATUS_WAIT_JOB;
+        return 0;
     }
 };
 
@@ -288,6 +319,7 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
     while (ml->workers.size()) {
         worker = ml->workers.front();
         ml->workers.pop_front();
+        worker->unlink();
         if(worker->is_closed() || worker->status != STATUS_WAIT_JOB) {
             // TODO: close wrong connection?
             std::cout << "dead worker\n";
@@ -300,13 +332,16 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
         string sid = id.as_string();
         if(wait_response[sid] != NULL) {
             ml->workers.push_front(worker);
+            worker->link();
             return -3;
         }
         worker->send("200 OK", &id, &client->body);
         wait_response[sid] = client;
+        client->link();
         worker->status = STATUS_NET;
     } else {
         ml->clients.push_back(client);
+        client->link();
         if(client->id.empty()) {
             client->id.set(id);
         }
@@ -321,6 +356,7 @@ int RpcServer::worker_result(ISlice id, Connect *worker) {
         return -1;
     }
     wait_response.erase(sid);
+    client->unlink();
     client->send("200 OK", &id, &worker->body);
     client->status = STATUS_NET;
     
