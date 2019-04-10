@@ -100,7 +100,7 @@ public:
         _ptr += len;
         _size -= len;
     }
-            
+
     Slice pop_line() {
         for(int i=0;i<size();i++) {
             if(_ptr[i] != '\n') continue;
@@ -165,7 +165,7 @@ public:
 
     void add(const char *buf, int size) {
         resize(_size + size);
-        memcpy(&_ptr[_size], buf, size);
+        memmove(&_ptr[_size], buf, size);
         _size += size;
     }
     void add(std::string &s) {

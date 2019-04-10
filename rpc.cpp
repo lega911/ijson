@@ -12,7 +12,31 @@ void Connect::on_recv(char *buf, int size) {
         buffer.add(buf, size);
         return;
     }
-    Slice data = Slice(buf, size);
+    Slice data;
+    if(buffer.size()) {
+        buffer.add(buf, size);
+        data = Slice(buffer);
+    } else {
+        data = Slice(buf, size);
+    }
+
+    if(http_step == HTTP_READ_BODY) {
+        int for_read = content_length - body.size();
+        if(for_read > size) {
+            body.add(data);
+            return;
+        } else {
+            Slice s = data.pop(for_read);
+            body.add(s);
+            //buffer.add(data);
+        }
+        if(body.size() == content_length) {
+            this->header_completed();
+            http_step = HTTP_START;
+        }
+        if(buffer.empty()) return;
+    }
+
     while(true) {
         Slice line = data.pop_line();
         if(!line.valid()) {
@@ -22,6 +46,7 @@ void Connect::on_recv(char *buf, int size) {
         line.rstrip();
 
         if(line.empty()) {
+            if(http_step != HTTP_HEADER) throw Exception("Wrong HTTP request");
             http_step = HTTP_REQUEST_COMPLETED;
             if(content_length) {
                 int for_read = content_length;
@@ -33,12 +58,24 @@ void Connect::on_recv(char *buf, int size) {
                     http_step = HTTP_READ_BODY;
                 };
             };
-            if(data.size()) {
-                buffer.add(data);
-                throw error::not_implemented("Next request");
+            //if(data.size()) buffer.set(data);
+            buffer.clear();
+            if(http_step == HTTP_REQUEST_COMPLETED) {
+                this->header_completed();
+                if(data.size()) {
+                    if(status == STATUS_NET) {
+                        http_step = HTTP_START;
+                        continue;
+                    } else {
+                        throw error::not_implemented("previous request is not finished");
+                        /*
+                        buffer.set(data);
+                        cout << "warning: previous request is not finished\n";
+                        break;
+                        */
+                    }
+                }
             }
-            //print2("header_completed", path);
-            this->header_completed();
             break;
         }
         if(http_step == HTTP_START) {
@@ -46,7 +83,7 @@ void Connect::on_recv(char *buf, int size) {
             id.clear();
             content_length = 0;
             if(this->read_method(line) != 0) {
-                cout << "Wrong http header\n";  // TODO: close socket
+                cout << "Wrong http header\n";
                 this->close();
                 return;
             }
@@ -54,14 +91,14 @@ void Connect::on_recv(char *buf, int size) {
         } else if(http_step == HTTP_HEADER) {
             this->read_header(line);
         }
-
-        //if(!line.empty()) print2("line", line.ptr(), line.size());
     }
 
     if(http_step == HTTP_REQUEST_COMPLETED) {
         http_step = HTTP_START;
     } else if(http_step == HTTP_READ_BODY) {
-        throw error::not_implemented("Not implemented: body is not read");
+        return;
+    } else if(http_step == HTTP_START || http_step == HTTP_HEADER) {
+        buffer.add(data);
     } else {
         throw Exception(31, "Error reading http header");
     }
