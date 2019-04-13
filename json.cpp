@@ -2,9 +2,9 @@
 #include "json.h"
 
 int JsonParser::parse_object(ISlice buf) {
-    if(buf.size() < 10) throw Exception(Exception::DATA_ERROR);
+    if(buf.size() < 10) throw error::InvalidData();
     const char *ptr = buf.ptr();
-    if(ptr[0] != '{') throw Exception(Exception::DATA_ERROR);
+    if(ptr[0] != '{') throw error::InvalidData();
     this->buf = buf;
 
     index = 1;
@@ -20,7 +20,7 @@ int JsonParser::parse_object(ISlice buf) {
         strip();
         key = read_string();
         strip();
-        if(next() != ':') throw Exception(Exception::DATA_ERROR);
+        if(next() != ':') throw error::InvalidData();
         strip();
         char a = peek();
         if(a == '"') value = read_string();
@@ -64,7 +64,7 @@ int JsonParser::parse_object(ISlice buf) {
         a = next();
         if(a == ',') continue;
         if(a == '}') break;
-        throw Exception(Exception::DATA_ERROR);
+        throw error::InvalidData();
     }
 
     return 0;
@@ -79,7 +79,7 @@ void JsonParser::strip() {
         }
         return;
     }
-    throw Exception(Exception::DATA_ERROR);
+    throw error::InvalidData();
 }
 
 Slice JsonParser::read_object() {
@@ -93,7 +93,7 @@ Slice JsonParser::read_object() {
 }
 
 Slice JsonParser::read_string() {
-    if(next() != '"') throw Exception(Exception::DATA_ERROR);
+    if(next() != '"') throw error::InvalidData();
     int start = index;
     const char *ptr = buf.ptr();
     for(;index < buf.size();index++) {
@@ -102,5 +102,5 @@ Slice JsonParser::read_string() {
             return Slice(&ptr[start], index - start - 1);
         }
     }
-    throw Exception(Exception::DATA_ERROR);
+    throw error::InvalidData();
 }

@@ -17,11 +17,11 @@ private:
     void strip();
 
     inline char next() {
-        if(index >= buf.size()) throw Exception(21);
+        if(index >= buf.size()) throw error::OutOfIndex();
         return buf.ptr()[index++];
     }
     inline char peek() {
-        if(index >= buf.size()) throw Exception(21);
+        if(index >= buf.size()) throw error::OutOfIndex();
         return buf.ptr()[index];
     }
 public:

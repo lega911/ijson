@@ -46,7 +46,7 @@ public:
     inline bool empty() {return size() == 0;}
     inline bool valid() {return _ptr != NULL;}
     inline char* ptr() {
-        if(_ptr == NULL) throw Exception(Exception::NO_DATA, "Not valid pointer");
+        if(_ptr == NULL) throw error::NoData();
         return _ptr;
     }
     inline int size() {return _size;}
@@ -59,7 +59,7 @@ public:
             s.append(ptr(), size());
         } else {
             if(_default == 1) s.append("<empty>");
-            else if(_default != 0) throw Exception(Exception::NO_DATA, "Not valid slice");
+            else if(_default != 0) throw error::NoData();
         }
         return s;
     }
@@ -96,7 +96,7 @@ public:
     }
 
     Slice get(int len) {
-        if(len > _size) throw "slice: len error";
+        if(len > _size) throw error::ArgumentError();
         return Slice(ptr(), len);
     }
     Slice pop(int len) {
@@ -129,11 +129,11 @@ public:
     }
     int atoi() {
         char *p = ptr();
-        if(!_size) throw "Data error";
+        if(!_size) throw error::NoData();
         int value = 0, n;
         for(int i=0;i<_size;i++) {
             n = p[i] - '0';
-            if(n < 0 || n > 9) throw "Data error";
+            if(n < 0 || n > 9) throw error::InvalidData();
             value = value * 10 + n;
         }
         return value;

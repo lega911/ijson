@@ -46,7 +46,7 @@ void Connect::on_recv(char *buf, int size) {
         line.rstrip();
 
         if(line.empty()) {
-            if(http_step != HTTP_HEADER) throw Exception("Wrong HTTP request");
+            if(http_step != HTTP_HEADER) throw error::InvalidData("Wrong HTTP request");
             http_step = HTTP_REQUEST_COMPLETED;
             if(content_length) {
                 int for_read = content_length;
@@ -67,7 +67,7 @@ void Connect::on_recv(char *buf, int size) {
                         http_step = HTTP_START;
                         continue;
                     } else {
-                        throw error::not_implemented("previous request is not finished");
+                        throw error::NotImplemented("previous request is not finished");
                         /*
                         buffer.set(data);
                         cout << "warning: previous request is not finished\n";
@@ -157,7 +157,7 @@ void Connect::header_completed() {
         JsonParser json;
         json.parse_object(this->body);
 
-        if(json.method.empty()) throw Exception("Wrong body");
+        if(json.method.empty()) throw error::InvalidData();
         method = json.method;
 
         if(method.equal("/rpc/add")) {
@@ -250,7 +250,7 @@ void Connect::send(const char *http_status, ISlice *id, Buffer *body) {
 void Connect::on_send() {
     if(send_buffer.size()) {
         int sent = this->raw_send(send_buffer.ptr(), send_buffer.size());
-        if(sent < 0) throw "Not implemented: sent < 0";
+        if(sent < 0) throw error::NotImplemented("Not implemented: sent < 0");
         send_buffer.remove_left(sent);
     }
 

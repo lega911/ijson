@@ -3,29 +3,53 @@
 #define EXCEPTION_H
 
 #include <stddef.h>
+#include <exception>
 
-class Exception {
+
+class Exception : public std::exception {
+private:
+    const char *_reason;
 public:
-    static const int NOT_IMPLEMENTED = 7;
-    static const int DATA_ERROR = 21;
-    static const int NO_DATA = 22;
-
-    int code;
-    const char *msg;
-    Exception() : code(0), msg(NULL) {};
-    Exception(int code) : code(code), msg(NULL) {};
-    Exception(const char *msg) : code(0), msg(msg) {};
-    Exception(int code, const char *msg) : code(code), msg(msg) {};
-    const char *get_msg() {
-        if(msg) return msg;
-        if(code == DATA_ERROR) return "Data error";
-        else if(code == NOT_IMPLEMENTED) return "Not implemented error";
-        return "Unknown error";
-    }
+    static const char *message;
+    Exception() {};
+    Exception(const char *reason) : _reason(reason) {};
+    virtual const char* what() const noexcept {
+        if(_reason) return _reason;
+        return "Exception";
+    };
 };
 
 namespace error {
-    Exception not_implemented(const char *msg);
+    class NotImplemented : public Exception {
+    public:
+        using Exception::Exception;
+        NotImplemented() : Exception("Not implemented") {};
+    };
+
+    class NoData : public Exception {
+    public:
+        using Exception::Exception;
+        NoData() : Exception("No data") {};
+    };
+
+    class InvalidData : public Exception {
+    public:
+        using Exception::Exception;
+        InvalidData() : Exception("Invalid data") {};
+    };
+
+    class OutOfIndex : public Exception {
+    public:
+        using Exception::Exception;
+        OutOfIndex() : Exception("Out of index") {};
+    };
+
+    class ArgumentError : public Exception {
+    public:
+        using Exception::Exception;
+        ArgumentError() : Exception("Argument error") {};
+    };
+
 }
 
 #endif /* EXCEPTION_H */

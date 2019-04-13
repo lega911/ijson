@@ -62,8 +62,8 @@ int main(int argc, char** argv) {
     std::cout << "Start server!\n";
     try {
         server.start(host, port);
-    } catch (const char * str) {
-        std::cout << "Exception: " << str << std::endl;
+    } catch (const exception &e) {
+        std::cout << "Fatal exception: " << e.what() << std::endl;
     }
 
     return 0;
