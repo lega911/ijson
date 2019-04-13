@@ -96,11 +96,8 @@ void Connect::on_recv(char *buf, int size) {
     if(http_step == HTTP_REQUEST_COMPLETED) {
         http_step = HTTP_START;
     } else if(http_step == HTTP_READ_BODY) {
-        return;
     } else if(http_step == HTTP_START || http_step == HTTP_HEADER) {
         buffer.add(data);
-    } else {
-        throw Exception(31, "Error reading http header");
     }
 };
 
@@ -131,10 +128,7 @@ int Connect::read_method(Slice &line) {
 void Connect::read_header(Slice &data) {
     if(data.starts_with("Content-Length: ")) {
         data.remove(16);
-        content_length = 0;
-        for(int i=0;i<data.size();i++) {
-            content_length = content_length * 10 + data.ptr()[i] - '0';
-        }
+        content_length = data.atoi();
     } else if(data.starts_with("Name: ")) {
         data.remove(6);
         name.set(data);

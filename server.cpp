@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 
 #define eitem struct epoll_event
@@ -35,8 +36,11 @@ void TcpServer::listen_socket() {
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port);
+    //serv_addr.sin_addr.s_addr = INADDR_ANY;
+    //serv_addr.sin_addr.s_addr = INADDR_LOOPBACK;
+    //serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serv_addr.sin_addr.s_addr = inet_addr(_host.as_string().c_str());
+    serv_addr.sin_port = htons(_port);
 
     if (bind(serverfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         throw "Error on binding, port is busy?";
@@ -73,9 +77,10 @@ void TcpServer::init_epoll() {
 
 }
 
-void TcpServer::start(int n_port) {
+void TcpServer::start(Slice host, int port) {
     this->connections = (IConnect**)calloc(MAX_EVENTS, sizeof(IConnect*));
-    this->port = n_port;
+    this->_host = host;
+    this->_port = port;
     this->listen_socket();
     this->unblock_socket(serverfd);
     this->init_epoll();

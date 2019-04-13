@@ -38,7 +38,8 @@ public:
 
 class TcpServer {
 private:
-    int port;
+    int _port;
+    Slice _host;
     int serverfd;
     int epollfd;
     IConnect** connections; // fixme
@@ -51,9 +52,9 @@ private:
 public:
     std::vector<IConnect*> dead_connections;
 
-    void start(int n_port);
+    void start(Slice host, int port);
     void unblock_socket(int fd);
-    void set_poll_mode(int fd, int status);  // 1 - read, 2- write
+    void set_poll_mode(int fd, int status);  // 1 - read, 2- write, -1 closed
     
     virtual IConnect* on_connect(int fd) {return new IConnect(fd, this);};
     virtual void on_disconnect(IConnect *conn) {

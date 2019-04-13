@@ -17,10 +17,12 @@ protected:
     int _size;
 public:
     ISlice() {
-        _ptr = NULL;
-        _size = 0;
+        reset();
     }
     ~ISlice() {
+        reset();
+    }
+    void reset() {
         _ptr = NULL;
         _size = 0;
     }
@@ -43,7 +45,10 @@ public:
 
     inline bool empty() {return size() == 0;}
     inline bool valid() {return _ptr != NULL;}
-    inline char* ptr() {return _ptr;}
+    inline char* ptr() {
+        if(_ptr == NULL) throw Exception(Exception::NO_DATA, "Not valid pointer");
+        return _ptr;
+    }
     inline int size() {return _size;}
     std::string as_string() {
         return as_string(5);
@@ -79,6 +84,10 @@ public:
     void set(const char *ptr, int size) {
         this->_ptr = (char*)ptr;
         _size = size;
+    }
+    void set(const char *ptr) {
+        this->_ptr = (char*)ptr;
+        _size = strlen(ptr);
     }
     void clear() {
         set(NULL, 0);
@@ -116,6 +125,17 @@ public:
         }
         _size = i + 1;
     }
+    int atoi() {
+        char *p = ptr();
+        if(!_size) throw "Data error";
+        int value = 0, n;
+        for(int i=0;i<_size;i++) {
+            n = p[i] - '0';
+            if(n < 0 || n > 9) throw "Data error";
+            value = value * 10 + n;
+        }
+        return value;
+    }
 };
 
 
@@ -143,6 +163,11 @@ public:
         _cap = 0;
         _size = 0;
         resize(size);
+    };
+    Buffer(const char *s) : ISlice() {
+        _cap = 0;
+        _size = 0;
+        add(s);
     };
     ~Buffer() {
         if(_ptr) free(_ptr);
