@@ -74,7 +74,7 @@ public:
     long counter_start;
     
     RpcServer() : TcpServer() {
-        counter_active = true;
+        counter_active = false;
         counter = 0;
         counter_start = 0;
     };

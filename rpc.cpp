@@ -185,6 +185,8 @@ void Connect::header_completed() {
         int r = server->worker_result(id, this);
         if(r == 0) {
             this->send("200 OK");
+        } else if(r == -2) {
+            this->send("499 Closed");
         } else {
             // error, no such client
             this->send("400 Wrong id");
@@ -390,16 +392,16 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
 int RpcServer::worker_result(ISlice id, Connect *worker) {
     string sid = id.as_string();
     Connect *client = wait_response[sid];
-    if(client == NULL) {
-        return -1;
-    }
+    if(client == NULL) return -1;
     wait_response.erase(sid);
+
     client->unlink();
+    if(client->is_closed()) return -2;
     client->send("200 OK", &id, &worker->body);
     client->status = STATUS_NET;
     
     if(counter_active) {
-        counter ++;
+        counter++;
         if(counter > 20000) {
             long now = get_time();
             long rps = (long)((double)counter * 1000000.0 / (double)(now - counter_start));

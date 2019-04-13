@@ -50,6 +50,8 @@ int main(int argc, char** argv) {
                 std::cout << "Wrong port\n";
                 return 0;
             }
+        } else if(s.equal("--counter")) {
+            server.counter_active = true;
         } else {
             std::cout << help_info;
             return 0;

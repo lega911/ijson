@@ -76,7 +76,9 @@ public:
         _ptr = (char*)ptr;
         _size = size;
     }
-    Slice(ISlice &s) { set(s.ptr(), s.size()); };
+    Slice(ISlice &s) {
+        if(s.valid()) set(s.ptr(), s.size());
+    };
     ~Slice() {
         _ptr = NULL;
         _size = 0;
