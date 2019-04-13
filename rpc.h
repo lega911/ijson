@@ -67,6 +67,7 @@ private:
 public:
     std::map<std::string, MethodLine*> methods;
     std::map<std::string, Connect*> wait_response;
+    std::vector<NetFilter> net_filter;
     
     bool counter_active;
     long counter;
@@ -78,7 +79,17 @@ public:
         counter_start = 0;
     };
 
-    IConnect* on_connect(int fd) {
+    IConnect* on_connect(int fd, uint32_t ip) {
+        if(net_filter.size()) {
+            bool ok=false;
+            for(int i=0;i<net_filter.size();i++) {
+                if(net_filter[i].match(ip)) {
+                    ok = true;
+                    break;
+                }
+            }
+            if(!ok) return NULL;
+        }
         return new Connect(fd, this);
     };
     

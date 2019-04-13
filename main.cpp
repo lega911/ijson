@@ -3,18 +3,19 @@
 #include "rpc.h"
 
 
-int main(int argc, char** argv) {
-    /*
-    --port 8001
-    --host 127.0.0.1
-    --filter 127.0.0.1/32
-    --log
-    --debug
-    */
+const char *help_info = "\
+    --port 8001\n\
+    --host 127.0.0.1\n\
+    --filter 127.0.0.1/32\n\
+    --log\n\
+    --debug\n\
+    --counter\n\
+";
 
+int main(int argc, char** argv) {
     int port = 8001;
-    Buffer host("127.0.0.1");
-    std::vector<int> net_filter;
+    Buffer host;
+    RpcServer server;
 
     Slice s, next;
     for(int i=1;i<argc;i++) {
@@ -41,19 +42,22 @@ int main(int argc, char** argv) {
         } else if(s.equal("--filter")) {
             if(next.valid()) {
                 std::cout << "filter " << next.as_string() << endl;
+                NetFilter nf(next);
+                server.net_filter.push_back(nf);
                 i++;
+                if(host.empty()) host.set("0.0.0.0");
             } else {
                 std::cout << "Wrong port\n";
                 return 0;
             }
         } else {
-            std::cout << "Help\n";
+            std::cout << help_info;
             return 0;
         }
     }
+    if(host.empty()) host.set("127.0.0.1");
 
     std::cout << "Start server!\n";
-    RpcServer server;
     try {
         server.start(host, port);
     } catch (const char * str) {

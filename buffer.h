@@ -236,6 +236,10 @@ public:
         clear();
         add(buf, size);
     }
+    void set(const char *str) {
+        clear();
+        add(str);
+    }
     void set(ISlice &s) {
         set(s.ptr(), s.size());
     }

@@ -25,8 +25,6 @@ void TcpServer::listen_socket() {
         throw "Error opening socket";
     }
 
-    // This helps avoid spurious EADDRINUSE when the previous instance of this
-    // server died.
     int opt = 1;
     if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         throw "setsockopt";
@@ -186,10 +184,15 @@ void TcpServer::loop() {
                     }
                     IConnect* conn;
                     try {
-                        conn = this->on_connect(fd);
+                        conn = this->on_connect(fd, peer_addr.sin_addr.s_addr);
                     } catch (Exception &e) {
                         std::cout << "Exception on_connect: " << e.get_msg() << std::endl;
                         close(fd);
+                        continue;
+                    }
+                    if(conn == NULL) {
+                        close(fd);
+                        std::cout << "Client filtered\n";
                         continue;
                     }
                     this->connections[fd] = conn;

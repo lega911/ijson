@@ -56,7 +56,7 @@ public:
     void unblock_socket(int fd);
     void set_poll_mode(int fd, int status);  // 1 - read, 2- write, -1 closed
     
-    virtual IConnect* on_connect(int fd) {return new IConnect(fd, this);};
+    virtual IConnect* on_connect(int fd, uint32_t ip) {return new IConnect(fd, this);};
     virtual void on_disconnect(IConnect *conn) {
         //delete conn;
     };
