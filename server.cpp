@@ -76,7 +76,8 @@ void TcpServer::init_epoll() {
 }
 
 void TcpServer::start(Slice host, int port) {
-    this->connections = (IConnect**)calloc(MAX_EVENTS, sizeof(IConnect*));
+    this->connections = (IConnect**)_malloc(MAX_EVENTS * sizeof(IConnect*));
+    if(this->connections == NULL) throw error::NoMemory();
     this->_host = host;
     this->_port = port;
     this->listen_socket();
@@ -138,12 +139,11 @@ void IConnect::unlink() {
 };
 
 void TcpServer::loop() {
-    eitem* events = (eitem*)calloc(MAX_EVENTS, sizeof(eitem));
-    if (events == NULL) {
-        throw Exception("Unable to allocate memory for epoll_events");
-    }
+    eitem* events = (eitem*)_malloc(MAX_EVENTS * sizeof(eitem));
+    if(events == NULL) throw error::NoMemory();
 
-    char *buf = (char*)calloc(BUF_SIZE, 1);
+    char *buf = (char*)_malloc(BUF_SIZE);
+    if(buf == NULL) throw error::NoMemory();
     int attempt = 10;
     while (attempt--) {
         int nready = epoll_wait(epollfd, events, MAX_EVENTS, -1);

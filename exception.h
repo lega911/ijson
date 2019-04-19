@@ -50,6 +50,12 @@ namespace error {
         ArgumentError() : Exception("Argument error") {};
     };
 
+    class NoMemory : public Exception {
+    public:
+        using Exception::Exception;
+        NoMemory() : Exception("No memory") {};
+    };
+
 }
 
 #endif /* EXCEPTION_H */

@@ -49,8 +49,8 @@ public:
 
     void header_completed();
     void send(const char *http_status);
-    void send(const char *http_status, Buffer *body);
-    void send(const char *http_status, ISlice *id,  Buffer *body);
+    void send(const char *http_status, ISlice *body);
+    void send(const char *http_status, ISlice *id,  ISlice *body);
     void on_send();
 };
 

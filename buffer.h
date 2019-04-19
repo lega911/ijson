@@ -5,6 +5,7 @@
 #include <string.h>
 #include <iostream>
 #include <stddef.h>
+#include "memory.h"
 #include "exception.h"
 
 
@@ -75,6 +76,10 @@ public:
     Slice(const char *ptr, int size) {
         _ptr = (char*)ptr;
         _size = size;
+    }
+    Slice(const char *ptr) {
+        _ptr = (char*)ptr;
+        _size = strlen(ptr);
     }
     Slice(ISlice &s) {
         if(s.valid()) set(s.ptr(), s.size());
@@ -172,17 +177,18 @@ public:
         add(s);
     };
     ~Buffer() {
-        if(_ptr) free(_ptr);
+        if(_ptr) _free(_ptr);
         _ptr = NULL;
     }
 
     void resize(int capacity) {
         if(_ptr == NULL) {
             _cap = _get_cap(capacity);
-            _ptr = (char*)malloc(_cap);
+            _ptr = (char*)_malloc(_cap);
+            if(_ptr == NULL) throw error::NoMemory();
         } else if(capacity > _cap) {
             _cap = _get_cap(capacity);
-            _ptr = (char*)realloc(_ptr, _cap);
+            _ptr = (char*)_realloc(_ptr, _cap);
         }
     }
     void resize(int capacity, int size) {

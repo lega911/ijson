@@ -143,11 +143,21 @@ void Connect::header_completed() {
     this->keep_alive = http_version == 11;
     
     if(this->path.equal("/echo")) {
-        Buffer b;
-        b.add("ok");
-        this->send("200 OK", &b);
+        Slice response("ok");
+        this->send("200 OK", &response);
         return;
     }
+
+    #ifdef DEBUG
+    if(this->path.equal("/debug")) {
+        Buffer r(32);
+        r.add("Memory allocated: ");
+        r.add_number(get_memory_allocated());
+        r.add("\n");
+        this->send("200 OK", &r);
+        return;
+    }
+    #endif
 
     Slice method(this->path);
     Slice name(this->name);
@@ -217,11 +227,11 @@ void Connect::send(const char *http_status) {
     this->send(http_status, NULL, NULL);
 }
 
-void Connect::send(const char *http_status, Buffer *body) {
+void Connect::send(const char *http_status, ISlice *body) {
     this->send(http_status, NULL, body);
 }
 
-void Connect::send(const char *http_status, ISlice *id, Buffer *body) {
+void Connect::send(const char *http_status, ISlice *id, ISlice *body) {
     send_buffer.resize(256);
 
     //Buffer r(256);

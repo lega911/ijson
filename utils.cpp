@@ -18,13 +18,14 @@ long get_time_sec() {
 long last_time = 0;
 
 void print2(const char *title, const char *s, int size) {
-    char *d = (char*)malloc(size + 1);
+    char *d = (char*)_malloc(size + 1);
+    if(d == NULL) throw error::NoMemory();
     memcpy(d, s, size);
     d[size] = 0;
     long t = get_time();
     std::cout << t - last_time << ": " << title << " " << d << std::endl;
     last_time = t;
-    free(d);
+    _free(d);
 }
 
 void print2(const char *title, Buffer &b) {
@@ -36,4 +37,3 @@ void print2(const char *title) {
     std::cout << t - last_time << ": " << title << std::endl;
     last_time = t;
 }
-
