@@ -83,13 +83,21 @@ void JsonParser::strip() {
 }
 
 Slice JsonParser::read_object() {
+    // 0-9, null, true, false
     int start = index;
     char a;
+    bool is_number = true;
     for(;a = next();) {
         if(a == ' ' || a == ',' || a == '}' || a == '\n' || a == '\r') break;
+        if(a < '0' || a > '9') is_number = false;
+        if(!is_number && (index - start > 5)) throw error::InvalidData();
     }
     index--;
-    return Slice(&buf.ptr()[start], index - start);
+    Slice result(&buf.ptr()[start], index - start);
+    if(!is_number) {
+        if(!(result.equal("null") || result.equal("true") || result.equal("false"))) throw error::InvalidData();
+    }
+    return result;
 }
 
 Slice JsonParser::read_string() {

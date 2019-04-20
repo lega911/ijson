@@ -165,7 +165,12 @@ void Connect::header_completed() {
 
     if(method.equal("/rpc/call")) {
         JsonParser json;
-        json.parse_object(this->body);
+        try {
+            json.parse_object(this->body);
+        } catch (const error::InvalidData &e) {
+            this->send("400 Invalid json");
+            return;
+        }
 
         if(json.method.empty()) throw error::InvalidData();
         method = json.method;
