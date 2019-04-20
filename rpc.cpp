@@ -353,9 +353,10 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
 };
 
 int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
-    MethodLine *ml = this->methods[name.as_string()];
-    if(ml == NULL) return -1;
-    
+    auto it = this->methods.find(name.as_string());
+    if (it == this->methods.end()) return -1;
+    MethodLine *ml = it->second;
+
     char _uuid[40];
     if(id.empty()) {
         uuid_t uuid;
@@ -449,6 +450,7 @@ void Connect::send_details() {
 void Connect::send_help() {
     RpcServer *server = (RpcServer*)this->server;
     Buffer res(256);
+    res.add("/rpc/add\n/rpc/result\n/rpc/details\n/rpc/help\n\n");
     for(const auto &it : server->methods) {
         string name = it.first;
         MethodLine *ml = it.second;

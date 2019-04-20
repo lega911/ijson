@@ -10,6 +10,11 @@ const char *help_info = "\
     --log\n\
     --debug\n\
     --counter\n\
+\n\
+    /rpc/add\n\
+    /rpc/result\n\
+    /rpc/details\n\
+    /rpc/help\n\
 ";
 
 int main(int argc, char** argv) {
