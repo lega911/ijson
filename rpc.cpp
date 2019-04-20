@@ -171,10 +171,14 @@ void Connect::header_completed() {
         method = json.method;
 
         if(method.equal("/rpc/add")) {
-            if(name.empty() && json.params.valid()) {
-                JsonParser params;
-                params.parse_object(json.params);
-                name = params.name;
+            if(name.empty() && !json.params.empty()) {
+                if(json.params.ptr()[0] == '{') {
+                    JsonParser params;
+                    params.parse_object(json.params);
+                    name = params.name;
+                } else {
+                    name = json.params;
+                }
             }
         } else {
             if(id.empty()) {
