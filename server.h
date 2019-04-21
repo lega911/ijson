@@ -50,7 +50,12 @@ private:
     
     void _close(int fd);
 public:
+    int log;
     std::vector<IConnect*> dead_connections;
+
+    TcpServer() {
+        log = 0;
+    };
 
     void start(Slice host, int port);
     void unblock_socket(int fd);

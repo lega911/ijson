@@ -72,7 +72,7 @@ public:
     bool counter_active;
     long counter;
     long counter_start;
-    
+
     RpcServer() : TcpServer() {
         counter_active = false;
         counter = 0;

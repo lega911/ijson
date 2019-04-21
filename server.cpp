@@ -47,6 +47,7 @@ void TcpServer::listen_socket() {
     if (listen(serverfd, 64) < 0) {
         throw Exception("ERROR on listen");
     }
+    if(this->log & 8) std::cout << "Server started on " << _host.as_string() << ":" << _port << std::endl;
 }
 
 void TcpServer::unblock_socket(int fd) {

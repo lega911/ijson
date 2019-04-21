@@ -135,12 +135,19 @@ public:
     int atoi() {
         char *p = ptr();
         if(!_size) throw error::NoData();
-        int value = 0, n;
-        for(int i=0;i<_size;i++) {
+        int value = 0, i = 0, n;
+        bool negative = false;
+        if(p[0] == '-') {
+            negative = true;
+            i = 1;
+            if(_size < 2) throw error::InvalidData();
+        }
+        for(;i<_size;i++) {
             n = p[i] - '0';
             if(n < 0 || n > 9) throw error::InvalidData();
             value = value * 10 + n;
         }
+        if(negative) return -value;
         return value;
     }
 };
