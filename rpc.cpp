@@ -83,7 +83,7 @@ void Connect::on_recv(char *buf, int size) {
             id.clear();
             content_length = 0;
             if(this->read_method(line) != 0) {
-                cout << "Wrong http header\n";
+                if(server->log & 2) cout << ltime() << "Wrong http header\n";
                 this->close();
                 return;
             }
@@ -141,6 +141,10 @@ void Connect::read_header(Slice &data) {
 
 void Connect::header_completed() {
     this->keep_alive = http_version == 11;
+
+    if(server->log & 16) {
+        std::cout << ltime() << this->path.as_string() << " " << this->body.size() << "b\n";
+    }
     
     if(this->path.equal("/echo")) {
         Slice response("ok");
@@ -319,13 +323,14 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
         client->unlink();
         if(client->is_closed() || client->status != STATUS_WAIT_RESPONSE) {
             // TODO: close wrong connection?
-            std::cout << "dead client\n";
+            if(log & 8) std::cout << ltime() << "dead client\n";
             client = NULL;
             continue;
         }
         sid = client->id.as_string();
         if(wait_response[sid] != NULL) {
             // colision id
+            if(log & 2) std::cout << ltime() << "collision id\n";
             client->send("400 Collision Id");
             client->status = STATUS_NET;
             client = NULL;
@@ -382,7 +387,7 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
         worker->unlink();
         if(worker->is_closed() || worker->status != STATUS_WAIT_JOB) {
             // TODO: close wrong connection?
-            std::cout << "dead worker\n";
+            if(log & 8) std::cout << ltime() << "dead worker\n";
             worker = NULL;
             continue;
         }

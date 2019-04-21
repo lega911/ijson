@@ -18,7 +18,7 @@ long get_time_sec();
 void print2(const char *title, const char *s, int size);
 void print2(const char *title, Buffer &b);
 void print2(const char *title);
-
+const char *ltime();
 
 #endif /* UTILS_H */
 

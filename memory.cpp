@@ -12,17 +12,14 @@
     void *_malloc(u32 size) {
         count++;
         void *ptr = malloc(size);
-        //std::cout << "[" << count << "] + " << size << "b " << ptr << std::endl;
         return ptr;
     }
     void *_realloc(void *ptr, u32 size) {
         ptr = realloc(ptr, size);
-        //std::cout << "[" << count << "] -+ " << size << "b " << ptr << std::endl;
         return ptr;
     }
     void _free(void *ptr) {
         count--;
-        //std::cout << "[" << count << "] - " << ptr << std::endl;
         free(ptr);
     }
 

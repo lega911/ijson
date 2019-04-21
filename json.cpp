@@ -47,7 +47,6 @@ int JsonParser::parse_object(ISlice buf) {
             value = Slice(&ptr[start], index - start);
         } else value = read_object();
 
-        //std::cout << key.as_string() << " = " << value.as_string() << std::endl;
         if(key.equal("method")) {
             this->method = value;
             if(!value.starts_with("/rpc/")) {

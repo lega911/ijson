@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
     try {
         server.start(host, port);
     } catch (const exception &e) {
-        std::cout << "Fatal exception: " << e.what() << std::endl;
+        std::cout << ltime() << "Fatal exception: " << e.what() << std::endl;
     }
     return 1;
 }

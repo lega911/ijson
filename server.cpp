@@ -47,7 +47,7 @@ void TcpServer::listen_socket() {
     if (listen(serverfd, 64) < 0) {
         throw Exception("ERROR on listen");
     }
-    if(this->log & 8) std::cout << "Server started on " << _host.as_string() << ":" << _port << std::endl;
+    if(this->log & 8) std::cout << ltime() << "Server started on " << _host.as_string() << ":" << _port << std::endl;
 }
 
 void TcpServer::unblock_socket(int fd) {
@@ -149,7 +149,7 @@ void TcpServer::loop() {
     while (attempt--) {
         int nready = epoll_wait(epollfd, events, MAX_EVENTS, -1);
         if(nready == -1) {
-            std::cout << "epoll_wait error: " << errno << std::endl;
+            if(log & 1) std::cout << ltime() << "epoll_wait error: " << errno << std::endl;
             continue;
         }
         attempt = 10;
@@ -169,9 +169,9 @@ void TcpServer::loop() {
                 int fd = accept(serverfd, (struct sockaddr*)&peer_addr, &peer_addr_len);
                 if (fd < 0) {
                     if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        std::cout << "accept: EAGAIN, EWOULDBLOCK\n";
+                        if(log & 1) std::cout << ltime() << "accept: EAGAIN, EWOULDBLOCK\n";
                     } else {
-                        std::cout << "warning: accept error\n";
+                        if(log & 1) std::cout << ltime() << "warning: accept error\n";
                         continue;
                     }
                 } else {
@@ -188,19 +188,19 @@ void TcpServer::loop() {
                     try {
                         conn = this->on_connect(fd, peer_addr.sin_addr.s_addr);
                     } catch (const Exception &e) {
-                        std::cout << "Exception on_connect: " << e.what() << std::endl;
+                        if(log & 2) std::cout << ltime() << "Exception on_connect: " << e.what() << std::endl;
                         close(fd);
                         continue;
                     }
                     if(conn == NULL) {
                         close(fd);
-                        std::cout << "Client filtered\n";
+                        if(log & 8) std::cout << ltime() << "Client filtered\n";
                         continue;
                     }
                     this->connections[fd] = conn;
                     conn->link();
 
-                    std::cout << "connect " << fd << " " << (void*)conn << std::endl;
+                    if(log & 8) std::cout << ltime() << "connect " << fd << " " << (void*)conn << std::endl;
 
                     eitem event = {0};
                     event.data.fd = fd;
@@ -228,7 +228,7 @@ void TcpServer::loop() {
                         try {
                             conn->on_recv(buf, size);
                         } catch (const Exception &e) {
-                            std::cout << "Exception on_recv: " << e.what() << std::endl;
+                            if(log & 2) std::cout << ltime() << "Exception on_recv: " << e.what() << std::endl;
                             conn->close();
                         }
                         if(conn->is_closed()) {
@@ -243,7 +243,7 @@ void TcpServer::loop() {
                     try {
                         conn->on_send();
                     } catch (const Exception &e) {
-                        std::cout << "Exception on_send: " << e.what() << std::endl;
+                        if(log & 2) std::cout << ltime() << "Exception on_send: " << e.what() << std::endl;
                         conn->close();
                     }
                     if(conn->is_closed()) {
@@ -259,7 +259,7 @@ void TcpServer::loop() {
         if(dead_connections.size()) {
             for(IConnect *conn : dead_connections) {
                 if(conn->get_link() == 0) {
-                    std::cout << "delete " << (void*)conn << std::endl;
+                    if(log & 8) std::cout << ltime() << "delete connection " << (void*)conn << std::endl;
                     delete conn;
                 }
             }
@@ -271,7 +271,7 @@ void TcpServer::loop() {
 
 void TcpServer::_close(int fd) {
     IConnect* conn=this->connections[fd];
-    std::cout << "disconnect socket " << fd << " " << (void*)conn << std::endl;
+    if(log & 8) std::cout << ltime() << "disconnect socket " << fd << " " << (void*)conn << std::endl;
     if(conn == NULL) throw Exception("_close: connection is null");
     conn->close();
     this->on_disconnect(conn);
