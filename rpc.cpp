@@ -143,7 +143,18 @@ void Connect::header_completed() {
     this->keep_alive = http_version == 11;
 
     if(server->log & 16) {
-        std::cout << ltime() << this->path.as_string() << " " << this->body.size() << "b\n";
+        Buffer repr(250);
+        if(this->body.size() > 200) {
+            repr.add(this->body.ptr(), 197);
+            repr.add("...");
+        } else {
+            repr.add(this->body);
+        }
+        for(int i=0;i<repr.size();i++) {
+            if(repr.ptr()[i] < 32) repr.ptr()[i] = '.';
+        }
+        repr.add("\n", 2);
+        std::cout << ltime() << this->path.as_string() << " " << this->body.size() << "b " << repr.ptr();
     }
     
     if(this->path.equal("/echo")) {
@@ -228,11 +239,15 @@ void Connect::header_completed() {
     if(r == 0) {
         status = STATUS_WAIT_RESPONSE;
     } else if(r == -1) {
+        if(server->log & 4) std::cout << ltime() << "404 no method " << method.as_string() << std::endl;
         this->send("404 Not Found");
-    } else if(r == -2) {
-        this->send("400 No Id");
+    /*} else if(r == -2) {
+        this->send("400 No Id");*/
     } else if(r == -3) {
+        if(server->log & 4) std::cout << ltime() << "400 collision id " << method.as_string() << std::endl;
         this->send("400 Collision Id");
+    } else {
+        throw error::NotImplemented();
     }
 }
 
