@@ -26,9 +26,7 @@ private:
     int http_step;
     int content_length;
     int http_version;  // 10, 11
-    bool keep_alive;
     Buffer buffer;
-    Buffer send_buffer;
 
     Buffer path;
     Buffer name;
@@ -48,10 +46,6 @@ public:
     void send_help();
 
     void header_completed();
-    void send(const char *http_status);
-    void send(const char *http_status, ISlice *body);
-    void send(const char *http_status, ISlice *id,  ISlice *body);
-    void on_send();
 };
 
 class MethodLine {

@@ -204,6 +204,7 @@ public:
     }
 
     void add(const char *buf, int size) {
+        if(buf == NULL) throw error::NoData("Buffer.add buf == NULL");
         resize(_size + size);
         memmove(&_ptr[_size], buf, size);
         _size += size;

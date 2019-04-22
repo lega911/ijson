@@ -4,6 +4,8 @@
 
 
 const char *help_info = "\
+    ijson 0.1.0\n\
+\n\
     --port 8001\n\
     --host 127.0.0.1\n\
     --filter 127.0.0.1/32\n\

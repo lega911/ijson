@@ -139,6 +139,22 @@ void IConnect::unlink() {
     else if(_link < 0) throw Exception("Wrong link count");
 };
 
+void IConnect::on_send() {
+    if(send_buffer.size()) {
+        int sent = this->raw_send(send_buffer.ptr(), send_buffer.size());
+        if(sent < 0) throw error::NotImplemented("Not implemented: sent < 0");
+        send_buffer.remove_left(sent);
+    }
+
+    if(send_buffer.size() == 0) {
+        if(this->keep_alive) {
+            this->write_mode(false);
+        } else {
+            this->close();
+        }
+    }
+};
+
 void TcpServer::loop() {
     eitem* events = (eitem*)_malloc(MAX_EVENTS * sizeof(eitem));
     if(events == NULL) throw error::NoMemory();
@@ -280,3 +296,44 @@ void TcpServer::_close(int fd) {
     this->set_poll_mode(fd, -1);
     close(fd);
 }
+
+HttpSender *HttpSender::status(const char *status) {
+    if(conn == NULL) throw error::NotImplemented();
+
+    conn->send_buffer.resize(256);
+    conn->send_buffer.add("HTTP/1.1 ");
+    conn->send_buffer.add(status);
+    conn->send_buffer.add("\r\n");
+    if(conn->keep_alive) {
+        conn->send_buffer.add("Connection: keep-alive\r\n");
+    }
+    return this;
+};
+
+HttpSender *HttpSender::header(const char *key, ISlice &value) {
+    if(conn == NULL) throw error::NotImplemented();
+
+    conn->send_buffer.add(key);
+    conn->send_buffer.add(": ");
+    conn->send_buffer.add(value);
+    conn->send_buffer.add("\r\n");
+    return this;
+};
+
+void HttpSender::perform(ISlice &body) {
+    if(conn == NULL) throw error::NotImplemented();
+
+    int body_size = body.size();
+    conn->send_buffer.add("Content-Length: ");
+    conn->send_buffer.add_number(body_size);
+    conn->send_buffer.add("\r\n\r\n");
+    conn->send_buffer.add(body);
+    conn->write_mode(true);
+};
+
+void HttpSender::perform() {
+    if(conn == NULL) throw error::NotImplemented();
+
+    conn->send_buffer.add("Content-Length: 0\r\n\r\n");
+    conn->write_mode(true);
+};

@@ -147,7 +147,7 @@ void Connect::header_completed() {
         if(this->body.size() > 200) {
             repr.add(this->body.ptr(), 197);
             repr.add("...");
-        } else {
+        } else if(this->body.size()) {
             repr.add(this->body);
         }
         for(int i=0;i<repr.size();i++) {
@@ -159,7 +159,7 @@ void Connect::header_completed() {
     
     if(this->path.equal("/echo")) {
         Slice response("ok");
-        this->send("200 OK", &response);
+        this->send.status("200 OK")->perform(response);
         return;
     }
 
@@ -169,7 +169,7 @@ void Connect::header_completed() {
         r.add("Memory allocated: ");
         r.add_number(get_memory_allocated());
         r.add("\n");
-        this->send("200 OK", &r);
+        this->send.status("200 OK")->perform(r);
         return;
     }
     #endif
@@ -183,7 +183,7 @@ void Connect::header_completed() {
         try {
             json.parse_object(this->body);
         } catch (const error::InvalidData &e) {
-            this->send("400 Invalid json");
+            this->send.status("400 Invalid json")->perform();
             return;
         }
 
@@ -210,7 +210,7 @@ void Connect::header_completed() {
     RpcServer *server = (RpcServer*)this->server;
     if(method.equal("/rpc/add")) {
         if(name.empty()) {
-            this->send("400 No name");
+            this->send.status("400 No name")->perform();
             return;
         }
         server->add_worker(name, this);
@@ -218,12 +218,12 @@ void Connect::header_completed() {
     } else if(method.equal("/rpc/result")) {
         int r = server->worker_result(id, this);
         if(r == 0) {
-            this->send("200 OK");
+            this->send.status("200 OK")->perform();
         } else if(r == -2) {
-            this->send("499 Closed");
+            this->send.status("499 Closed")->perform();
         } else {
             // error, no such client
-            this->send("400 Wrong id");
+            this->send.status("400 Wrong id")->perform();
         }
         status = STATUS_NET;
         return;
@@ -240,66 +240,16 @@ void Connect::header_completed() {
         status = STATUS_WAIT_RESPONSE;
     } else if(r == -1) {
         if(server->log & 4) std::cout << ltime() << "404 no method " << method.as_string() << std::endl;
-        this->send("404 Not Found");
+        this->send.status("404 Not Found")->perform();
     /*} else if(r == -2) {
         this->send("400 No Id");*/
     } else if(r == -3) {
         if(server->log & 4) std::cout << ltime() << "400 collision id " << method.as_string() << std::endl;
-        this->send("400 Collision Id");
+        this->send.status("400 Collision Id")->perform();
     } else {
         throw error::NotImplemented();
     }
 }
-
-void Connect::send(const char *http_status) {
-    this->send(http_status, NULL, NULL);
-}
-
-void Connect::send(const char *http_status, ISlice *body) {
-    this->send(http_status, NULL, body);
-}
-
-void Connect::send(const char *http_status, ISlice *id, ISlice *body) {
-    send_buffer.resize(256);
-
-    //Buffer r(256);
-    send_buffer.add("HTTP/1.1 ");
-    send_buffer.add(http_status);
-    if(this->keep_alive) {
-        send_buffer.add("\r\nConnection: keep-alive");
-    }
-    if(id) {
-        send_buffer.add("\r\nId: ");
-        send_buffer.add(id);
-    }
-    int body_size = 0;
-    if(body && body->size()) body_size = body->size();
-    send_buffer.add("\r\nContent-Length: ");
-    send_buffer.add_number(body_size);
-    send_buffer.add("\r\n\r\n");
-    
-    if(body_size) {
-        send_buffer.add(body);
-    }
-
-    this->write_mode(true);
-}
-
-void Connect::on_send() {
-    if(send_buffer.size()) {
-        int sent = this->raw_send(send_buffer.ptr(), send_buffer.size());
-        if(sent < 0) throw error::NotImplemented("Not implemented: sent < 0");
-        send_buffer.remove_left(sent);
-    }
-
-    if(send_buffer.size() == 0) {
-        if(this->keep_alive) {
-            this->write_mode(false);
-        } else {
-            this->close();
-        }
-    }
-};
 
 void RpcServer::add_worker(ISlice name, Connect *worker) {
     char *ptr = name.ptr();
@@ -346,7 +296,7 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
         if(wait_response[sid] != NULL) {
             // colision id
             if(log & 2) std::cout << ltime() << "collision id\n";
-            client->send("400 Collision Id");
+            client->send.status("400 Collision Id")->perform();
             client->status = STATUS_NET;
             client = NULL;
             continue;
@@ -355,7 +305,7 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
     }
 
     if(client) {
-        worker->send("200 OK", &client->id, &client->body);
+        worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->perform(client->body);
         wait_response[sid] = client;
         client->link();
         worker->status = STATUS_NET;
@@ -415,7 +365,7 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
             worker->link();
             return -3;
         }
-        worker->send("200 OK", &id, &client->body);
+        worker->send.status("200 OK")->header("Id", id)->header("Method", name)->perform(client->body);
         wait_response[sid] = client;
         client->link();
         worker->status = STATUS_NET;
@@ -430,14 +380,14 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
 };
 
 int RpcServer::worker_result(ISlice id, Connect *worker) {
-    string sid = id.as_string();
-    Connect *client = wait_response[sid];
-    if(client == NULL) return -1;
-    wait_response.erase(sid);
+    auto it = wait_response.find(id.as_string());
+    if(it == wait_response.end()) return -1;
+    Connect *client = it->second;
+    wait_response.erase(it);
 
     client->unlink();
     if(client->is_closed()) return -2;
-    client->send("200 OK", &id, &worker->body);
+    client->send.status("200 OK")->header("Id", id)->perform(worker->body);
     client->status = STATUS_NET;
     
     if(counter_active) {
@@ -473,7 +423,7 @@ void Connect::send_details() {
     };
     if(res.size() > 2) res.resize(0, res.size() - 2);
     res.add("}");
-    send("200 OK", &res);
+    send.status("200 OK")->perform(res);
 }
 
 void Connect::send_help() {
@@ -488,5 +438,5 @@ void Connect::send_help() {
         res.add_number(ml->workers.size());
         res.add("\n");
     }
-    send("200 OK", &res);
+    send.status("200 OK")->perform(res);
 }

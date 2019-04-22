@@ -6,22 +6,42 @@
 #include "utils.h"
 
 class TcpServer;
+class IConnect;
+
+class HttpSender {
+private:
+    IConnect *conn;
+public:
+    HttpSender() {conn=NULL;};
+    void set_connect(IConnect *n_conn) {this->conn = n_conn;};
+    HttpSender *status(const char *status);
+    HttpSender *header(const char *key, ISlice &value);
+    void perform(ISlice &body);
+    void perform();
+};
 
 class IConnect {
 private:
     char _socket_status;  //  1 - read, 2 - write, -1 - closed
     int _link;
 public:
+    HttpSender send;
+    Buffer send_buffer;
+    bool keep_alive;
     int fd;
     TcpServer *server;
     IConnect(int fd, TcpServer *server) : fd(fd) {
         _link = 0;
         _socket_status=1;
         this->server=server;
+        send.set_connect(this);
     };
-    virtual ~IConnect() { fd = 0; };
+    virtual ~IConnect() {
+        fd = 0;
+        send.set_connect(NULL);
+    };
     virtual void on_recv(char *buf, int size) {};
-    virtual void on_send() {};
+    virtual void on_send();
     virtual void on_error() {};
     
     void write_mode(bool active);
@@ -67,6 +87,4 @@ public:
     };
 };
 
-
 #endif /* SERVER_H */
-
