@@ -174,38 +174,42 @@ void Connect::header_completed() {
     }
     #endif
 
-    Slice method(this->path);
+    Slice method;
     Slice name(this->name);
     Slice id(this->id);
 
-    if(method.equal("/rpc/call")) {
-        JsonParser json;
-        try {
-            json.parse_object(this->body);
-        } catch (const error::InvalidData &e) {
-            this->send.status("400 Invalid json")->perform();
-            return;
-        }
+    if(!this->path.equal("/rpc/call")) {
+        method.set(this->path);
+    };
 
-        if(json.method.empty()) throw error::InvalidData();
-        method = json.method;
-
-        if(method.equal("/rpc/add")) {
-            if(name.empty() && !json.params.empty()) {
-                if(json.params.ptr()[0] == '{') {
-                    JsonParser params;
-                    params.parse_object(json.params);
-                    name = params.name;
-                } else {
-                    name = json.params;
-                }
+    if(this->body.size()) {
+        bool rpc_add = method.equal("/rpc/add");
+        if(method.empty() || (id.empty() && !rpc_add || name.empty() && rpc_add)) {
+            JsonParser json;
+            try {
+                json.parse_object(this->body);
+            } catch (const error::InvalidData &e) {
+                this->send.status("400 Invalid json")->perform();
+                return;
             }
-        } else {
-            if(id.empty()) {
-                id = json.id;
+
+            if(method.empty()) method = json.method;
+            if(id.empty()) id = json.id;
+
+            if(rpc_add || method.equal("/rpc/add")) {
+                if(name.empty() && !json.params.empty()) {
+                    if(json.params.ptr()[0] == '{') {
+                        JsonParser params;
+                        params.parse_object(json.params);
+                        name = params.name;
+                    } else {
+                        name = json.params;
+                    }
+                }
             }
         }
     }
+    if(method.empty()) throw error::InvalidData();
 
     RpcServer *server = (RpcServer*)this->server;
     if(method.equal("/rpc/add")) {
@@ -216,14 +220,18 @@ void Connect::header_completed() {
         server->add_worker(name, this);
         return;
     } else if(method.equal("/rpc/result")) {
-        int r = server->worker_result(id, this);
-        if(r == 0) {
-            this->send.status("200 OK")->perform();
-        } else if(r == -2) {
-            this->send.status("499 Closed")->perform();
+        if(id.empty()) {
+            this->send.status("400 No id")->perform();
         } else {
-            // error, no such client
-            this->send.status("400 Wrong id")->perform();
+            int r = server->worker_result(id, this);
+            if(r == 0) {
+                this->send.status("200 OK")->perform();
+            } else if(r == -2) {
+                this->send.status("499 Closed")->perform();
+            } else {
+                // error, no such client
+                this->send.status("400 Wrong id")->perform();
+            }
         }
         status = STATUS_NET;
         return;

@@ -88,6 +88,9 @@ public:
         _ptr = NULL;
         _size = 0;
     }
+    void set(ISlice &s) {
+        set(s.ptr(), s.size());
+    }
     void set(const char *ptr, int size) {
         this->_ptr = (char*)ptr;
         _size = size;

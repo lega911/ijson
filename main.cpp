@@ -10,7 +10,6 @@ const char *help_info = "\
     --host 127.0.0.1\n\
     --filter 127.0.0.1/32\n\
     --log <option>\n\
-    --debug\n\
     --counter\n\
 \n\
     /rpc/add\n\
