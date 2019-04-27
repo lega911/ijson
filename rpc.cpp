@@ -82,6 +82,8 @@ void Connect::on_recv(char *buf, int size) {
             body.clear();
             id.clear();
             content_length = 0;
+            fail_on_disconnect = false;
+            fail_id.clear();
             if(this->read_method(line) != 0) {
                 if(server->log & 2) cout << ltime() << "Wrong http header\n";
                 this->close();
@@ -261,6 +263,7 @@ void Connect::rpc_add(ISlice params) {
                 return;
             }
             if(name.empty()) name = json.name;
+            this->fail_on_disconnect = json.fail_on_disconnect.equal("true");
         } else if(name.empty()) name = params;
     }
 
@@ -325,6 +328,7 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
     }
 
     if(client) {
+        if(worker->fail_on_disconnect) worker->fail_id.set(client->id);
         worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->perform(client->body);
         wait_response[sid] = client;
         client->link();
@@ -385,6 +389,7 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
             worker->link();
             return -3;
         }
+        if(worker->fail_on_disconnect) worker->fail_id.set(id);
         worker->send.status("200 OK")->header("Id", id)->header("Method", name)->perform(client->body);
         wait_response[sid] = client;
         client->link();
@@ -407,7 +412,8 @@ int RpcServer::worker_result(ISlice id, Connect *worker) {
 
     client->unlink();
     if(client->is_closed()) return -2;
-    client->send.status("200 OK")->header("Id", id)->perform(worker->body);
+    if(worker) client->send.status("200 OK")->header("Id", id)->perform(worker->body);
+    else client->send.status("503 Service Unavailable")->header("Id", id)->perform();
     client->status = STATUS_NET;
     
     if(counter_active) {
@@ -422,6 +428,12 @@ int RpcServer::worker_result(ISlice id, Connect *worker) {
     }
 
     return 0;
+};
+
+void RpcServer::on_disconnect(IConnect *conn) {
+    Connect *c = (Connect*)conn;
+    if(!c->fail_on_disconnect) return;
+    worker_result(c->fail_id, NULL);
 };
 
 void Connect::send_details() {

@@ -58,6 +58,7 @@ int JsonParser::parse_object(ISlice buf) {
             if(skip_body) return 1;
         } else if(key.equal("params")) this->params = value;
         else if(key.equal("name")) this->name = value;
+        else if(key.equal("fail_on_disconnect")) this->fail_on_disconnect = value;
 
         strip();
         a = next();

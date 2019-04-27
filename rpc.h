@@ -34,6 +34,8 @@ public:
     int status;
     Buffer body;
     Buffer id;
+    bool fail_on_disconnect;
+    Buffer fail_id;
 
     Connect(int fd, TcpServer *server) : IConnect(fd, server) {
         http_step = HTTP_START;
@@ -87,7 +89,8 @@ public:
         }
         return new Connect(fd, this);
     };
-    
+
+    void on_disconnect(IConnect *conn);
     void add_worker(ISlice name, Connect *worker);
     int client_request(ISlice name, Connect *client, Slice id);
     int worker_result(ISlice id, Connect *worker);

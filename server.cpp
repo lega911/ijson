@@ -322,6 +322,7 @@ HttpSender *HttpSender::header(const char *key, ISlice &value) {
 
 void HttpSender::perform(ISlice &body) {
     if(conn == NULL) throw error::NotImplemented();
+    if(conn->is_closed()) throw Exception("Trying to send to closed socket");
 
     int body_size = body.size();
     conn->send_buffer.add("Content-Length: ");
@@ -333,6 +334,7 @@ void HttpSender::perform(ISlice &body) {
 
 void HttpSender::perform() {
     if(conn == NULL) throw error::NotImplemented();
+    if(conn->is_closed()) throw Exception("Trying to send to closed socket");
 
     conn->send_buffer.add("Content-Length: 0\r\n\r\n");
     conn->write_mode(true);

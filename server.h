@@ -82,9 +82,7 @@ public:
     void set_poll_mode(int fd, int status);  // 1 - read, 2- write, -1 closed
     
     virtual IConnect* on_connect(int fd, uint32_t ip) {return new IConnect(fd, this);};
-    virtual void on_disconnect(IConnect *conn) {
-        //delete conn;
-    };
+    virtual void on_disconnect(IConnect *conn) {};
 };
 
 #endif /* SERVER_H */
