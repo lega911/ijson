@@ -132,7 +132,7 @@ void Connect::read_header(Slice &data) {
     } else if(data.starts_with("Name: ")) {
         data.remove(6);
         name.set(data);
-    } else if(data.starts_with("Id: ")) {
+    } else if(data.starts_with("Id: ") || data.starts_with("id: ")) {
         data.remove(4);
         id.set(data);
     }
@@ -142,10 +142,10 @@ void Connect::read_header(Slice &data) {
 void Connect::header_completed() {
     this->keep_alive = http_version == 11;
 
-    if(server->log & 16) {
+    if(this->server->log & 16) {
         Buffer repr(250);
-        if(this->body.size() > 200) {
-            repr.add(this->body.ptr(), 197);
+        if(this->body.size() > 150) {
+            repr.add(this->body.ptr(), 147);
             repr.add("...");
         } else if(this->body.size()) {
             repr.add(this->body);
@@ -175,16 +175,15 @@ void Connect::header_completed() {
     #endif
 
     Slice method;
-    Slice name(this->name);
     Slice id(this->id);
+    Slice params;
 
     if(!this->path.equal("/rpc/call")) {
         method.set(this->path);
     };
 
     if(this->body.size()) {
-        bool rpc_add = method.equal("/rpc/add");
-        if(method.empty() || (id.empty() && !rpc_add || name.empty() && rpc_add)) {
+        if(method.empty() || id.empty() || method.equal("/rpc/add")) {
             JsonParser json;
             try {
                 json.parse_object(this->body);
@@ -195,41 +194,31 @@ void Connect::header_completed() {
 
             if(method.empty()) method = json.method;
             if(id.empty()) id = json.id;
-
-            if(rpc_add || method.equal("/rpc/add")) {
-                if(name.empty() && !json.params.empty()) {
-                    if(json.params.ptr()[0] == '{') {
-                        JsonParser params;
-                        params.parse_object(json.params);
-                        name = params.name;
-                    } else {
-                        name = json.params;
-                    }
-                }
-            }
+            params = json.params;
         }
     }
-    if(method.empty()) throw error::InvalidData();
+    if(method.empty()) {
+        this->send.status("400 No method")->perform();
+        return;
+    }
 
     RpcServer *server = (RpcServer*)this->server;
     if(method.equal("/rpc/add")) {
-        if(name.empty()) {
-            this->send.status("400 No name")->perform();
-            return;
-        }
-        server->add_worker(name, this);
+        rpc_add(params);
         return;
     } else if(method.equal("/rpc/result")) {
         if(id.empty()) {
+            if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
             this->send.status("400 No id")->perform();
         } else {
             int r = server->worker_result(id, this);
             if(r == 0) {
                 this->send.status("200 OK")->perform();
             } else if(r == -2) {
+                if(server->log & 4) std::cout << ltime() << "499 Client is gone\n";
                 this->send.status("499 Closed")->perform();
             } else {
-                // error, no such client
+                if(server->log & 2) std::cout << ltime() << "400 Wrong id for /rpc/result\n";
                 this->send.status("400 Wrong id")->perform();
             }
         }
@@ -256,6 +245,29 @@ void Connect::header_completed() {
         this->send.status("400 Collision Id")->perform();
     } else {
         throw error::NotImplemented();
+    }
+}
+
+void Connect::rpc_add(ISlice params) {
+    Slice name = Slice(this->name);
+
+    if(!params.empty()) {
+        if(params.ptr()[0] == '{') {
+            JsonParser json;
+            try {
+                json.parse_object(params);
+            } catch (const error::InvalidData &e) {
+                this->send.status("400 Invalid json")->perform();
+                return;
+            }
+            if(name.empty()) name = json.name;
+        } else if(name.empty()) name = params;
+    }
+
+    if(name.empty()) {
+        this->send.status("400 No name")->perform();
+    } else {
+        ((RpcServer*)server)->add_worker(name, this);
     }
 }
 

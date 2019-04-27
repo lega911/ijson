@@ -44,6 +44,7 @@ public:
     void read_header(Slice &data);
     void send_details();
     void send_help();
+    void rpc_add(ISlice params);
 
     void header_completed();
 };
