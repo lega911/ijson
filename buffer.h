@@ -29,19 +29,25 @@ public:
     }
 
     bool starts_with(const char *s) {
-        if(s[0] == 0) return true;
-        if(size() == 0) return false;
-        if(s[0] != _ptr[0]) return false;
-
-        int len = strlen(s);
-        if(len > size()) return false;
-        return memcmp(ptr(), s, len) == 0;
+        int i = 0;
+        while(*s) {
+            if(i >= _size) return false;
+            if(*s != _ptr[i]) return false;
+            i++;
+            s++;
+        }
+        return true;
     }
 
     bool equal(const char *s) {
-        int len = strlen(s);
-        if(len != size()) return false;
-        return memcmp(s, _ptr, size()) == 0;
+        int i = 0;
+        while(*s) {
+            if(i >= _size) return false;
+            if(*s != _ptr[i]) return false;
+            i++;
+            s++;
+        }
+        return i == _size;
     }
 
     inline bool empty() {return size() == 0;}
