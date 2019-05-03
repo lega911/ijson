@@ -229,7 +229,7 @@ void Connect::header_completed() {
     } else if(method.equal("/rpc/details")) {
         send_details();
         return;
-    } else if(method.equal("/rpc/help")) {
+    } else if(method.equal("/") || method.equal("/rpc/help")) {
         send_help();
         return;
     }
@@ -361,7 +361,7 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
     MethodLine *ml = it->second;
 
     char _uuid[40];
-    if(id.empty()) {
+    if(id.empty() || id.equal("null")) {
         uuid_t uuid;
         uuid_generate_time_safe(uuid);
         //client->id.resize(37, 36);

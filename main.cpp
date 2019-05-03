@@ -4,7 +4,7 @@
 
 
 const char *help_info = "\
-    ijson 0.1.0\n\
+    ijson 0.1.1\n\
 \n\
     --port 8001\n\
     --host 127.0.0.1\n\
