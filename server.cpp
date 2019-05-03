@@ -325,10 +325,14 @@ void HttpSender::perform(ISlice &body) {
     if(conn->is_closed()) throw Exception("Trying to send to closed socket");
 
     int body_size = body.size();
-    conn->send_buffer.add("Content-Length: ");
-    conn->send_buffer.add_number(body_size);
-    conn->send_buffer.add("\r\n\r\n");
-    conn->send_buffer.add(body);
+    if(body_size == 0) {
+        conn->send_buffer.add("Content-Length: 0\r\n\r\n");
+    } else {
+        conn->send_buffer.add("Content-Length: ");
+        conn->send_buffer.add_number(body_size);
+        conn->send_buffer.add("\r\n\r\n");
+        conn->send_buffer.add(body);
+    }
     conn->write_mode(true);
 };
 

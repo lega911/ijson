@@ -277,7 +277,7 @@ public:
             _size = 0;
         } else {
             _size -= n;
-            memcpy(&_ptr[n], _ptr, _size);
+            memmove(_ptr, &_ptr[n], _size);
         }
     }
 };
