@@ -8,7 +8,7 @@
 
 void Connect::on_recv(char *buf, int size) {
     if(status != STATUS_NET) {
-        print2("!STATUS_NET", buf, size);
+        if(server->log & 4) cout << "warning: data is come, but connection is not ready\n";
         buffer.add(buf, size);
         return;
     }
@@ -39,10 +39,7 @@ void Connect::on_recv(char *buf, int size) {
 
     while(true) {
         Slice line = data.pop_line();
-        if(!line.valid()) {
-            print2("no line", data.ptr(), data.size());
-            break;
-        }
+        if(!line.valid()) break;  // wait next package
         line.rstrip();
 
         if(line.empty()) {
