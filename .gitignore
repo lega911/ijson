@@ -1,4 +1,7 @@
 .vscode/
-json
-main
-utils
+/ijson
+/ijson.debug
+docker/ijson
+/main.bin
+/info
+/test/
