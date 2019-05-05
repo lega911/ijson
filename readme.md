@@ -26,7 +26,7 @@ curl -d '{"id": 123, "params": "test data"}' http://localhost:8001/test/command
 # 3. and sends response with the same id
 curl -d '{"id": 123, "result": "data received"}' http://localhost:8001/rpc/result
 
-# client receives {"id": 123, "result": "data received"}l
+# client receives {"id": 123, "result": "data received"}
 ```
 
 ### Python example
@@ -38,12 +38,9 @@ response = requests.post('http://127.0.0.1:8001/test/command', json={'id': 1, 'p
 print(response.json())
 
 # worker
-with requests.Session() as session:
-    while True:
-        request = session.post('http://127.0.0.1:8001/rpc/add', json={'params': '/test/command'}).json()
-        response = {
-            'id': request['id'],
-            'result': request['params'] + ' world!'
-        }
-        session.post('http://127.0.0.1:8001/rpc/result', json=response)
+while True:
+    request = session.post('http://127.0.0.1:8001/rpc/add', json={'params': '/test/command'}).json()
+    
+    response = {'id': request['id'], 'result': request['params'] + ' world!'}
+    session.post('http://127.0.0.1:8001/rpc/result', json=response)
 ```
