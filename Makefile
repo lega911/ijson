@@ -3,9 +3,9 @@
 info:
 	echo debug release
 debug:
-	g++ *.cpp -luuid -std=c++17 -DDEBUG -o ijson.debug
+	g++ src/*.cpp -luuid -std=c++17 -DDEBUG -o ijson.debug
 release:
-	g++ *.cpp -luuid -std=c++17 -O2 -o ijson
+	g++ src/*.cpp -luuid -std=c++17 -O2 -o ijson
 alpine:
-	cd /cpp; g++ *.cpp -luuid -std=c++17 -O2 -o /cpp/docker/ijson
+	cd /cpp; g++ src/*.cpp -luuid -std=c++17 -O2 -o /cpp/docker/ijson
 build: debug release
