@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
     int port = 8001;
     Buffer host;
     RpcServer server;
+    server.log = 15;
 
     Slice s, next;
     for(int i=1;i<argc;i++) {
