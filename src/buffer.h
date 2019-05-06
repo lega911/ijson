@@ -119,6 +119,16 @@ public:
         _size -= len;
         return r;
     }
+    Slice split_left(char a) {
+        for(int i=0;i<size();++i) {
+            if(_ptr[i] != a) continue;
+            Slice result = Slice(_ptr, i);
+            _size -= i + 1;
+            _ptr += i + 1;
+            return result;
+        }
+        return pop(_size);
+    }
 
     void remove(int len) {
         if(len > size()) len = size();

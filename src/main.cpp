@@ -4,10 +4,9 @@
 
 
 const char *help_info = "\
-    ijson 0.1.1\n\
+    ijson 0.1.2\n\
 \n\
-    --port 8001\n\
-    --host 127.0.0.1\n\
+    --host 127.0.0.1:8001\n\
     --filter 127.0.0.1/32\n\
     --log <option>\n\
     --counter\n\
@@ -38,17 +37,18 @@ int main(int argc, char** argv) {
         if(i + 1 < argc) next.set(argv[i + 1]);
         else next.reset();
 
-        if(s.equal("--port")) {
+        if(s.equal("--host")) {
             if(next.valid()) {
-                port = next.atoi();
-                i++;
-            } else {
-                std::cout << "Wrong port\n";
-                return 1;
-            }
-        } else if(s.equal("--host")) {
-            if(next.valid()) {
-                host.set(next);
+                Slice _h = next.split_left(':');
+                host.set(_h);
+                if(!next.empty()) {
+                    try {
+                        port = next.atoi();
+                    } catch(const Exception &e) {
+                        std::cout << "Wrong host option\n";
+                        return 1;
+                    }
+                }
                 i++;
             } else {
                 std::cout << "Wrong host\n";
