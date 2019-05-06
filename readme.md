@@ -1,6 +1,8 @@
 ### ijson - inverted json (inverted jsonrpc proxy)
 
-ijson helps to make RPC communication via http where both clients and workers are http-clients: [client] -> [ijson] <- [worker]
+![Scheme](ijson.png)
+
+ijson helps to make RPC communication via http where both clients and workers are http-clients.
 * It's fast - it based on c++ and epoll
 * JsonRPC2 partly supported
 * Able to send binary data (not only json)
