@@ -1,7 +1,7 @@
 ### ijson - inverted json (inverted jsonrpc proxy)
 
 ijson helps to make RPC communication via http where both clients and workers are http-clients: [client] -> [ijson] <- [worker]
-* It's fast - it uses c++ and epoll
+* It's fast - it based on c++ and epoll
 * JsonRPC2 partly supported
 * Able to send binary data (not only json)
 * Multimethods
@@ -10,8 +10,16 @@ ijson helps to make RPC communication via http where both clients and workers ar
 * Docker image ~9Mb (proxy itself is ~100kb)
 
 ### Start ijson
-```
+``` bash
 docker run -i -p 8001:8001 lega911/ijson
+```
+
+### Options
+``` bash
+> ijson
+  --host 0.0.0.0:8001  # bind host:port
+  --filter 192.168.0.0/24 --filter 70.0.0.0/8  # ip filters for clients
+  --log 3  # mask for logs
 ```
 
 ### Example with curl
