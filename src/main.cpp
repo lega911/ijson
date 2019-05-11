@@ -9,7 +9,6 @@ const char *help_info = "\
     --host 127.0.0.1:8001\n\
     --filter 127.0.0.1/32\n\
     --log <option>\n\
-    --counter\n\
 \n\
     /rpc/add\n\
     /rpc/result\n\
@@ -78,8 +77,6 @@ int main(int argc, char** argv) {
                 std::cout << "Wrong log option\n";
                 return 1;
             }
-        } else if(s.equal("--counter")) {
-            server.counter_active = true;
         } else if(s.equal("--help")) {
             std::cout << help_info;
             return 0;

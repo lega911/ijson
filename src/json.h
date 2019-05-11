@@ -29,7 +29,8 @@ public:
     Slice id;
     Slice params;
     Slice name;
-    Slice fail_on_disconnect;
+    bool fail_on_disconnect;
+    bool noid;
     
     int parse_object(ISlice buf);
 };

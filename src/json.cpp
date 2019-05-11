@@ -15,6 +15,8 @@ int JsonParser::parse_object(ISlice buf) {
     this->id.clear();
     this->params.clear();
     this->name.clear();
+    this->fail_on_disconnect = false;
+    this->noid = false;
 
     for(;index < buf.size();) {
         strip();
@@ -58,7 +60,8 @@ int JsonParser::parse_object(ISlice buf) {
             if(skip_body) return 1;
         } else if(key.equal("params")) this->params = value;
         else if(key.equal("name")) this->name = value;
-        else if(key.equal("fail_on_disconnect")) this->fail_on_disconnect = value;
+        else if(key.equal("fail_on_disconnect")) this->fail_on_disconnect = value.equal("true");
+        else if(key.equal("noid")) this->noid = value.equal("true");
 
         strip();
         a = next();

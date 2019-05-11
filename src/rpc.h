@@ -19,6 +19,7 @@ using namespace std;
 #define STATUS_NET 21
 #define STATUS_WAIT_JOB 22
 #define STATUS_WAIT_RESPONSE 23
+#define STATUS_WAIT_RESULT 24
 
 
 class Connect : public IConnect {
@@ -35,11 +36,13 @@ public:
     Buffer body;
     Buffer id;
     bool fail_on_disconnect;
-    Buffer fail_id;
+    bool noid;
+    Connect *client;
 
     Connect(int fd, TcpServer *server) : IConnect(fd, server) {
         http_step = HTTP_START;
         status = STATUS_NET;
+        client = NULL;
     }
     void on_recv(char *buf, int size);
     int read_method(Slice &line);
@@ -49,6 +52,7 @@ public:
     void rpc_add(ISlice params);
 
     void header_completed();
+    void gen_id();
 };
 
 class MethodLine {
@@ -66,16 +70,7 @@ public:
     std::map<std::string, Connect*> wait_response;
     std::vector<NetFilter> net_filter;
     
-    bool counter_active;
-    long counter;
-    long counter_start;
-
-    RpcServer() : TcpServer() {
-        counter_active = false;
-        counter = 0;
-        counter_start = 0;
-    };
-
+    RpcServer() : TcpServer() {};
     IConnect* on_connect(int fd, uint32_t ip) {
         if(net_filter.size()) {
             bool ok=false;
@@ -94,8 +89,8 @@ public:
     void add_worker(ISlice name, Connect *worker);
     int client_request(ISlice name, Connect *client, Slice id);
     int worker_result(ISlice id, Connect *worker);
+    int worker_result_noid(Connect *worker);
 };
 
 
 #endif /* RPC_H */
-

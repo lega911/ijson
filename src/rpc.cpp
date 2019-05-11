@@ -7,7 +7,7 @@
 
 
 void Connect::on_recv(char *buf, int size) {
-    if(status != STATUS_NET) {
+    if(!(status == STATUS_NET || (status == STATUS_WAIT_RESULT && noid))) {
         if(server->log & 4) cout << "warning: data is come, but connection is not ready\n";
         buffer.add(buf, size);
         return;
@@ -22,8 +22,9 @@ void Connect::on_recv(char *buf, int size) {
 
     if(http_step == HTTP_READ_BODY) {
         int for_read = content_length - body.size();
-        if(for_read > size) {
+        if(for_read > data.size()) {
             body.add(data);
+            buffer.clear();
             return;
         } else {
             Slice s = data.pop(for_read);
@@ -34,11 +35,12 @@ void Connect::on_recv(char *buf, int size) {
             this->header_completed();
             http_step = HTTP_START;
         }
-        if(buffer.empty()) return;
+        if(data.empty()) return;
     }
 
+    Slice line;
     while(true) {
-        Slice line = data.pop_line();
+        line = data.pop_line();
         if(!line.valid()) break;  // wait next package
         line.rstrip();
 
@@ -79,8 +81,14 @@ void Connect::on_recv(char *buf, int size) {
             body.clear();
             id.clear();
             content_length = 0;
-            fail_on_disconnect = false;
-            fail_id.clear();
+            if(status != STATUS_WAIT_RESULT) {
+                fail_on_disconnect = false;
+                if(client) client->unlink();
+                client = NULL;
+                noid = false;
+            } else {
+                if(!noid) throw error::NotImplemented("noid is false");
+            }
             if(this->read_method(line) != 0) {
                 if(server->log & 2) cout << ltime() << "Wrong http header\n";
                 this->close();
@@ -173,6 +181,24 @@ void Connect::header_completed() {
     }
     #endif
 
+    RpcServer *server = (RpcServer*)this->server;
+
+    if(noid) {
+        if(!this->path.equal("/rpc/result")) {
+            this->send.status("400 Result expected")->perform();
+            return;
+        };
+        int r = server->worker_result_noid(this);
+        if(r == 0) {
+            this->send.status("200 OK")->perform();
+        } else if(r == -2) {
+            if(server->log & 4) std::cout << ltime() << "499 Client is gone\n";
+            this->send.status("499 Closed")->perform();
+        } else throw error::NotImplemented("Wrong result for noid");
+        status = STATUS_NET;
+        return;
+    }
+
     Slice method;
     Slice id(this->id);
     Slice params;
@@ -201,7 +227,6 @@ void Connect::header_completed() {
         return;
     }
 
-    RpcServer *server = (RpcServer*)this->server;
     if(method.equal("/rpc/add")) {
         rpc_add(params);
         return;
@@ -260,7 +285,8 @@ void Connect::rpc_add(ISlice params) {
                 return;
             }
             if(name.empty()) name = json.name;
-            this->fail_on_disconnect = json.fail_on_disconnect.equal("true");
+            this->noid = json.noid;
+            this->fail_on_disconnect = json.fail_on_disconnect || this->noid;
         } else if(name.empty()) name = params;
     }
 
@@ -312,6 +338,8 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
             client = NULL;
             continue;
         }
+        if(worker->noid) break;
+        if(client->id.empty()) client->gen_id();
         sid = client->id.as_string();
         if(wait_response[sid] != NULL) {
             // colision id
@@ -325,11 +353,19 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
     }
 
     if(client) {
-        if(worker->fail_on_disconnect) worker->fail_id.set(client->id);
-        worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->perform(client->body);
-        wait_response[sid] = client;
-        client->link();
-        worker->status = STATUS_NET;
+        if(worker->fail_on_disconnect) {
+            worker->client = client;
+            worker->client->link();
+        }
+        if(worker->noid) {
+            worker->send.status("200 OK")->header("Method", name)->perform(client->body);
+            worker->status = STATUS_WAIT_RESULT;
+        } else {
+            worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->perform(client->body);
+            wait_response[sid] = client;
+            client->link();
+            worker->status = STATUS_NET;
+        }
         return 1;
     } else {
         if (ml->workers.size()) {
@@ -352,19 +388,17 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
     }
 };
 
+void Connect::gen_id() {
+    id.resize(36, 36);
+    uuid_t uuid;
+    uuid_generate_time_safe(uuid);
+    uuid_unparse_lower(uuid, id.ptr());
+}
+
 int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
     auto it = this->methods.find(name.as_string());
     if (it == this->methods.end()) return -1;
     MethodLine *ml = it->second;
-
-    char _uuid[40];
-    if(id.empty() || id.equal("null")) {
-        uuid_t uuid;
-        uuid_generate_time_safe(uuid);
-        //client->id.resize(37, 36);
-        uuid_unparse_lower(uuid, _uuid);
-        id.set(_uuid, 36);
-    }
 
     Connect *worker = NULL;
     while (ml->workers.size()) {
@@ -380,21 +414,35 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
         break;
     };
     if(worker) {
-        string sid = id.as_string();
-        if(wait_response[sid] != NULL) {
-            ml->workers.push_front(worker);
-            worker->link();
-            return -3;
+        if(worker->noid) {
+            worker->client = client;
+            client->link();
+            worker->send.status("200 OK")->header("Method", name)->perform(client->body);
+            worker->status = STATUS_WAIT_RESULT;
+        } else {
+            if(id.empty()) {
+                client->gen_id();
+                id.set(client->id);
+            }
+            string sid = id.as_string();
+            if(wait_response[sid] != NULL) {
+                ml->workers.push_front(worker);
+                worker->link();
+                return -3;
+            }
+            if(worker->fail_on_disconnect) {
+                worker->client = client;
+                client->link();
+            }
+            worker->send.status("200 OK")->header("Id", id)->header("Method", name)->perform(client->body);
+            wait_response[sid] = client;
+            client->link();
+            worker->status = STATUS_NET;
         }
-        if(worker->fail_on_disconnect) worker->fail_id.set(id);
-        worker->send.status("200 OK")->header("Id", id)->header("Method", name)->perform(client->body);
-        wait_response[sid] = client;
-        client->link();
-        worker->status = STATUS_NET;
     } else {
         ml->clients.push_back(client);
         client->link();
-        if(client->id.empty()) {
+        if(client->id.empty() && !id.empty()) {
             client->id.set(id);
         }
     }
@@ -412,17 +460,22 @@ int RpcServer::worker_result(ISlice id, Connect *worker) {
     if(worker) client->send.status("200 OK")->header("Id", id)->perform(worker->body);
     else client->send.status("503 Service Unavailable")->header("Id", id)->perform();
     client->status = STATUS_NET;
-    
-    if(counter_active) {
-        counter++;
-        if(counter > 20000) {
-            long now = get_time();
-            long rps = (long)((double)counter * 1000000.0 / (double)(now - counter_start));
-            counter_start = now;
-            counter = 0;
-            cout << rps << " rps\n";
-        }
-    }
+
+    return 0;
+};
+
+int RpcServer::worker_result_noid(Connect *worker) {
+    auto client = worker->client;
+    if(!client) throw error::NotImplemented("No connected client for noid");
+
+    worker->noid = false;
+    worker->fail_on_disconnect = false;
+    worker->client = NULL;
+    client->unlink();
+
+    if(client->is_closed()) return -2;
+    client->send.status("200 OK")->perform(worker->body);
+    client->status = STATUS_NET;
 
     return 0;
 };
@@ -430,7 +483,17 @@ int RpcServer::worker_result(ISlice id, Connect *worker) {
 void RpcServer::on_disconnect(IConnect *conn) {
     Connect *c = (Connect*)conn;
     if(!c->fail_on_disconnect) return;
-    worker_result(c->fail_id, NULL);
+    if(c->noid) {
+        if(!c->client) throw Exception("No client");
+        c->client->send.status("503 Service Unavailable")->perform();
+        c->client->status = STATUS_NET;
+    } else {
+        worker_result(c->client->id, NULL);
+    }
+    if(c->client) {
+        c->client->unlink();
+        c->client = NULL;
+    };
 };
 
 void Connect::send_details() {
