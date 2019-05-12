@@ -132,6 +132,7 @@ void JData::reset() {
     params_parsed = false;
     main.reset();
     params.reset();
+    _name.clear();
 }
 
 Slice JData::get_id() {
@@ -146,6 +147,7 @@ Slice JData::get_method() {
 
 Slice JData::get_name() {
     ensure_params();
+    if(!_name.empty()) return _name;
     return params.name;
 }
 

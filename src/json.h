@@ -41,6 +41,7 @@ private:
     Slice _data;
     JsonParser main;
     JsonParser params;
+    Slice _name;
     bool main_parsed;
     bool params_parsed;
 
@@ -53,7 +54,9 @@ private:
         if(params_parsed) return;
         params_parsed = true;
         ensure_main();
-        if(!main.params.empty()) params.parse_object(main.params);
+        if(main.params.empty()) return;
+        if(main.params.ptr()[0] == '{') params.parse_object(main.params);
+        else _name = main.params;
     }
 public:
     JData() {
