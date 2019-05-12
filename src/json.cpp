@@ -1,6 +1,15 @@
 
 #include "json.h"
 
+void JsonParser::reset() {
+    this->method.clear();
+    this->id.clear();
+    this->params.clear();
+    this->name.clear();
+    this->fail_on_disconnect = false;
+    this->noid = false;
+};
+
 int JsonParser::parse_object(ISlice buf) {
     if(buf.size() < 10) throw error::InvalidData();
     const char *ptr = buf.ptr();
@@ -11,12 +20,7 @@ int JsonParser::parse_object(ISlice buf) {
     bool skip_body = false;
 
     Slice key, value;
-    this->method.clear();
-    this->id.clear();
-    this->params.clear();
-    this->name.clear();
-    this->fail_on_disconnect = false;
-    this->noid = false;
+    reset();
 
     for(;index < buf.size();) {
         strip();
@@ -114,4 +118,43 @@ Slice JsonParser::read_string() {
         }
     }
     throw error::InvalidData();
+}
+
+/* JData */
+
+void JData::parse(ISlice data) {
+    _data.set(data);
+    reset();
+}
+
+void JData::reset() {
+    main_parsed = false;
+    params_parsed = false;
+    main.reset();
+    params.reset();
+}
+
+Slice JData::get_id() {
+    ensure_main();
+    return main.id;
+}
+
+Slice JData::get_method() {
+    ensure_main();
+    return main.method;
+}
+
+Slice JData::get_name() {
+    ensure_params();
+    return params.name;
+}
+
+bool JData::get_fail_on_disconnect() {
+    ensure_params();
+    return params.fail_on_disconnect;
+}
+
+bool JData::get_noid() {
+    ensure_params();
+    return params.noid;
 }

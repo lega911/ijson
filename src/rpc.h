@@ -7,6 +7,7 @@
 
 #include "server.h"
 #include "utils.h"
+#include "json.h"
 
 
 using namespace std;
@@ -38,6 +39,7 @@ public:
     bool fail_on_disconnect;
     bool noid;
     Connect *client;
+    JData jdata;
 
     Connect(int fd, TcpServer *server) : IConnect(fd, server) {
         http_step = HTTP_START;
@@ -49,7 +51,7 @@ public:
     void read_header(Slice &data);
     void send_details();
     void send_help();
-    void rpc_add(ISlice params);
+    void rpc_add();
 
     void header_completed();
     void gen_id();
@@ -87,7 +89,7 @@ public:
 
     void on_disconnect(IConnect *conn);
     void add_worker(ISlice name, Connect *worker);
-    int client_request(ISlice name, Connect *client, Slice id);
+    int client_request(ISlice name, Connect *client);
     int worker_result(ISlice id, Connect *worker);
     int worker_result_noid(Connect *worker);
 };

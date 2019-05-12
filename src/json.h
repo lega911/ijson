@@ -33,7 +33,40 @@ public:
     bool noid;
     
     int parse_object(ISlice buf);
+    void reset();
+};
+
+class JData {
+private:
+    Slice _data;
+    JsonParser main;
+    JsonParser params;
+    bool main_parsed;
+    bool params_parsed;
+
+    void ensure_main() {
+        if(main_parsed) return;
+        main_parsed = true;
+        if(!_data.empty()) main.parse_object(_data);
+    }
+    void ensure_params() {
+        if(params_parsed) return;
+        params_parsed = true;
+        ensure_main();
+        if(!main.params.empty()) params.parse_object(main.params);
+    }
+public:
+    JData() {
+        reset();
+    };
+    void parse(ISlice data);
+    void reset();
+
+    Slice get_id();
+    Slice get_method();
+    Slice get_name();
+    bool get_fail_on_disconnect();
+    bool get_noid();
 };
 
 #endif /* JSON_H */
-

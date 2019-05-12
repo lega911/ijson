@@ -32,7 +32,11 @@ void Connect::on_recv(char *buf, int size) {
             //buffer.add(data);
         }
         if(body.size() == content_length) {
-            this->header_completed();
+            try {
+                this->header_completed();
+            } catch (const error::InvalidData &e) {
+                this->send.status("400 Invalid data")->perform();
+            }
             http_step = HTTP_START;
         }
         if(data.empty()) return;
@@ -60,7 +64,12 @@ void Connect::on_recv(char *buf, int size) {
             //if(data.size()) buffer.set(data);
             buffer.clear();
             if(http_step == HTTP_REQUEST_COMPLETED) {
-                this->header_completed();
+                try {
+                    this->header_completed();
+                } catch (const error::InvalidData &e) {
+                    this->send.status("400 Invalid data")->perform();
+                }
+
                 if(data.size()) {
                     if(status == STATUS_NET) {
                         http_step = HTTP_START;
@@ -80,6 +89,8 @@ void Connect::on_recv(char *buf, int size) {
         if(http_step == HTTP_START) {
             body.clear();
             id.clear();
+            name.clear();
+            this->jdata.reset();
             content_length = 0;
             if(status != STATUS_WAIT_RESULT) {
                 fail_on_disconnect = false;
@@ -182,7 +193,6 @@ void Connect::header_completed() {
     #endif
 
     RpcServer *server = (RpcServer*)this->server;
-
     if(noid) {
         if(!this->path.equal("/rpc/result")) {
             this->send.status("400 Result expected")->perform();
@@ -201,36 +211,23 @@ void Connect::header_completed() {
 
     Slice method;
     Slice id(this->id);
-    Slice params;
+    jdata.parse(this->body);
 
-    if(!this->path.equal("/rpc/call")) {
-        method.set(this->path);
+    if(this->path.equal("/rpc/call")) {
+        method = jdata.get_method();
+        if(method.empty()) {
+            this->send.status("400 No method")->perform();
+            return;
+        }
+    } else {
+        method = this->path;
     };
 
-    if(this->body.size()) {
-        if(method.empty() || id.empty() || method.equal("/rpc/add")) {
-            JsonParser json;
-            try {
-                json.parse_object(this->body);
-            } catch (const error::InvalidData &e) {
-                this->send.status("400 Invalid json")->perform();
-                return;
-            }
-
-            if(method.empty()) method = json.method;
-            if(id.empty()) id = json.id;
-            params = json.params;
-        }
-    }
-    if(method.empty()) {
-        this->send.status("400 No method")->perform();
-        return;
-    }
-
     if(method.equal("/rpc/add")) {
-        rpc_add(params);
+        rpc_add();
         return;
     } else if(method.equal("/rpc/result")) {
+        if(id.empty()) id = jdata.get_id();
         if(id.empty()) {
             if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
             this->send.status("400 No id")->perform();
@@ -256,7 +253,7 @@ void Connect::header_completed() {
         return;
     }
 
-    int r = server->client_request(method, this, id);
+    int r = server->client_request(method, this);
     if(r == 0) {
         status = STATUS_WAIT_RESPONSE;
     } else if(r == -1) {
@@ -272,23 +269,11 @@ void Connect::header_completed() {
     }
 }
 
-void Connect::rpc_add(ISlice params) {
-    Slice name = Slice(this->name);
-
-    if(!params.empty()) {
-        if(params.ptr()[0] == '{') {
-            JsonParser json;
-            try {
-                json.parse_object(params);
-            } catch (const error::InvalidData &e) {
-                this->send.status("400 Invalid json")->perform();
-                return;
-            }
-            if(name.empty()) name = json.name;
-            this->noid = json.noid;
-            this->fail_on_disconnect = json.fail_on_disconnect || this->noid;
-        } else if(name.empty()) name = params;
-    }
+void Connect::rpc_add() {
+    Slice name(this->name);
+    if(name.empty()) name = this->jdata.get_name();
+    this->noid = this->jdata.get_noid();
+    this->fail_on_disconnect = this->noid || jdata.get_fail_on_disconnect();
 
     if(name.empty()) {
         this->send.status("400 No name")->perform();
@@ -395,7 +380,7 @@ void Connect::gen_id() {
     uuid_unparse_lower(uuid, id.ptr());
 }
 
-int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
+int RpcServer::client_request(ISlice name, Connect *client) {
     auto it = this->methods.find(name.as_string());
     if (it == this->methods.end()) return -1;
     MethodLine *ml = it->second;
@@ -420,6 +405,8 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
             worker->send.status("200 OK")->header("Method", name)->perform(client->body);
             worker->status = STATUS_WAIT_RESULT;
         } else {
+            Slice id(client->id);
+            if(id.empty()) id = client->jdata.get_id();
             if(id.empty()) {
                 client->gen_id();
                 id.set(client->id);
@@ -442,9 +429,6 @@ int RpcServer::client_request(ISlice name, Connect *client, Slice id) {
     } else {
         ml->clients.push_back(client);
         client->link();
-        if(client->id.empty() && !id.empty()) {
-            client->id.set(id);
-        }
     }
     return 0;
 };
@@ -483,7 +467,7 @@ int RpcServer::worker_result_noid(Connect *worker) {
 void RpcServer::on_disconnect(IConnect *conn) {
     Connect *c = (Connect*)conn;
     if(!c->fail_on_disconnect) return;
-    if(c->noid) {
+    if(c->noid && c->status == STATUS_WAIT_RESULT) {
         if(!c->client) throw Exception("No client");
         c->client->send.status("503 Service Unavailable")->perform();
         c->client->status = STATUS_NET;
