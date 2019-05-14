@@ -320,7 +320,7 @@ HttpSender *HttpSender::header(const char *key, ISlice &value) {
     return this;
 };
 
-void HttpSender::perform(ISlice &body) {
+void HttpSender::done(ISlice &body) {
     if(conn == NULL) throw error::NotImplemented();
     if(conn->is_closed()) throw Exception("Trying to send to closed socket");
 
@@ -336,7 +336,7 @@ void HttpSender::perform(ISlice &body) {
     conn->write_mode(true);
 };
 
-void HttpSender::perform() {
+void HttpSender::done() {
     if(conn == NULL) throw error::NotImplemented();
     if(conn->is_closed()) throw Exception("Trying to send to closed socket");
 

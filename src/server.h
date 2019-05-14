@@ -16,8 +16,8 @@ public:
     void set_connect(IConnect *n_conn) {this->conn = n_conn;};
     HttpSender *status(const char *status);
     HttpSender *header(const char *key, ISlice &value);
-    void perform(ISlice &body);
-    void perform();
+    void done(ISlice &body);
+    void done();
 };
 
 class IConnect {

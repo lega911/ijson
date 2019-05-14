@@ -35,7 +35,7 @@ void Connect::on_recv(char *buf, int size) {
             try {
                 this->header_completed();
             } catch (const error::InvalidData &e) {
-                this->send.status("400 Invalid data")->perform();
+                this->send.status("400 Invalid data")->done();
             }
             http_step = HTTP_START;
         }
@@ -67,7 +67,7 @@ void Connect::on_recv(char *buf, int size) {
                 try {
                     this->header_completed();
                 } catch (const error::InvalidData &e) {
-                    this->send.status("400 Invalid data")->perform();
+                    this->send.status("400 Invalid data")->done();
                 }
 
                 if(data.size()) {
@@ -177,7 +177,7 @@ void Connect::header_completed() {
     
     if(this->path.equal("/echo")) {
         Slice response("ok");
-        this->send.status("200 OK")->perform(response);
+        this->send.status("200 OK")->done(response);
         return;
     }
 
@@ -187,7 +187,7 @@ void Connect::header_completed() {
         r.add("Memory allocated: ");
         r.add_number(get_memory_allocated());
         r.add("\n");
-        this->send.status("200 OK")->perform(r);
+        this->send.status("200 OK")->done(r);
         return;
     }
     #endif
@@ -195,15 +195,15 @@ void Connect::header_completed() {
     RpcServer *server = (RpcServer*)this->server;
     if(noid) {
         if(!this->path.equal("/rpc/result")) {
-            this->send.status("400 Result expected")->perform();
+            this->send.status("400 Result expected")->done();
             return;
         };
         int r = server->worker_result_noid(this);
         if(r == 0) {
-            this->send.status("200 OK")->perform();
+            this->send.status("200 OK")->done();
         } else if(r == -2) {
             if(server->log & 4) std::cout << ltime() << "499 Client is gone\n";
-            this->send.status("499 Closed")->perform();
+            this->send.status("499 Closed")->done();
         } else throw error::NotImplemented("Wrong result for noid");
         status = STATUS_NET;
         return;
@@ -216,7 +216,7 @@ void Connect::header_completed() {
     if(this->path.equal("/rpc/call")) {
         method = jdata.get_method();
         if(method.empty()) {
-            this->send.status("400 No method")->perform();
+            this->send.status("400 No method")->done();
             return;
         }
     } else {
@@ -230,17 +230,17 @@ void Connect::header_completed() {
         if(id.empty()) id = jdata.get_id();
         if(id.empty()) {
             if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
-            this->send.status("400 No id")->perform();
+            this->send.status("400 No id")->done();
         } else {
             int r = server->worker_result(id, this);
             if(r == 0) {
-                this->send.status("200 OK")->perform();
+                this->send.status("200 OK")->done();
             } else if(r == -2) {
                 if(server->log & 4) std::cout << ltime() << "499 Client is gone\n";
-                this->send.status("499 Closed")->perform();
+                this->send.status("499 Closed")->done();
             } else {
                 if(server->log & 2) std::cout << ltime() << "400 Wrong id for /rpc/result\n";
-                this->send.status("400 Wrong id")->perform();
+                this->send.status("400 Wrong id")->done();
             }
         }
         status = STATUS_NET;
@@ -258,12 +258,12 @@ void Connect::header_completed() {
         status = STATUS_WAIT_RESPONSE;
     } else if(r == -1) {
         if(server->log & 4) std::cout << ltime() << "404 no method " << method.as_string() << std::endl;
-        this->send.status("404 Not Found")->perform();
+        this->send.status("404 Not Found")->done();
     /*} else if(r == -2) {
         this->send("400 No Id");*/
     } else if(r == -3) {
         if(server->log & 4) std::cout << ltime() << "400 collision id " << method.as_string() << std::endl;
-        this->send.status("400 Collision Id")->perform();
+        this->send.status("400 Collision Id")->done();
     } else {
         throw error::NotImplemented();
     }
@@ -276,7 +276,7 @@ void Connect::rpc_add() {
     this->fail_on_disconnect = this->noid || jdata.get_fail_on_disconnect();
 
     if(name.empty()) {
-        this->send.status("400 No name")->perform();
+        this->send.status("400 No name")->done();
     } else {
         ((RpcServer*)server)->add_worker(name, this);
     }
@@ -329,7 +329,7 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
         if(wait_response[sid] != NULL) {
             // colision id
             if(log & 2) std::cout << ltime() << "collision id\n";
-            client->send.status("400 Collision Id")->perform();
+            client->send.status("400 Collision Id")->done();
             client->status = STATUS_NET;
             client = NULL;
             continue;
@@ -343,10 +343,10 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
             worker->client->link();
         }
         if(worker->noid) {
-            worker->send.status("200 OK")->header("Method", name)->perform(client->body);
+            worker->send.status("200 OK")->header("Method", name)->done(client->body);
             worker->status = STATUS_WAIT_RESULT;
         } else {
-            worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->perform(client->body);
+            worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->done(client->body);
             wait_response[sid] = client;
             client->link();
             worker->status = STATUS_NET;
@@ -402,7 +402,7 @@ int RpcServer::client_request(ISlice name, Connect *client) {
         if(worker->noid) {
             worker->client = client;
             client->link();
-            worker->send.status("200 OK")->header("Method", name)->perform(client->body);
+            worker->send.status("200 OK")->header("Method", name)->done(client->body);
             worker->status = STATUS_WAIT_RESULT;
         } else {
             Slice id(client->id);
@@ -421,7 +421,7 @@ int RpcServer::client_request(ISlice name, Connect *client) {
                 worker->client = client;
                 client->link();
             }
-            worker->send.status("200 OK")->header("Id", id)->header("Method", name)->perform(client->body);
+            worker->send.status("200 OK")->header("Id", id)->header("Method", name)->done(client->body);
             wait_response[sid] = client;
             client->link();
             worker->status = STATUS_NET;
@@ -441,8 +441,8 @@ int RpcServer::worker_result(ISlice id, Connect *worker) {
 
     client->unlink();
     if(client->is_closed()) return -2;
-    if(worker) client->send.status("200 OK")->header("Id", id)->perform(worker->body);
-    else client->send.status("503 Service Unavailable")->header("Id", id)->perform();
+    if(worker) client->send.status("200 OK")->header("Id", id)->done(worker->body);
+    else client->send.status("503 Service Unavailable")->header("Id", id)->done();
     client->status = STATUS_NET;
 
     return 0;
@@ -458,7 +458,7 @@ int RpcServer::worker_result_noid(Connect *worker) {
     client->unlink();
 
     if(client->is_closed()) return -2;
-    client->send.status("200 OK")->perform(worker->body);
+    client->send.status("200 OK")->done(worker->body);
     client->status = STATUS_NET;
 
     return 0;
@@ -469,7 +469,7 @@ void RpcServer::on_disconnect(IConnect *conn) {
     if(!c->fail_on_disconnect) return;
     if(c->noid && c->status == STATUS_WAIT_RESULT) {
         if(!c->client) throw Exception("No client");
-        c->client->send.status("503 Service Unavailable")->perform();
+        c->client->send.status("503 Service Unavailable")->done();
         c->client->status = STATUS_NET;
     } else {
         worker_result(c->client->id, NULL);
@@ -499,7 +499,7 @@ void Connect::send_details() {
     };
     if(res.size() > 2) res.resize(0, res.size() - 2);
     res.add("}");
-    send.status("200 OK")->perform(res);
+    send.status("200 OK")->done(res);
 }
 
 void Connect::send_help() {
@@ -514,5 +514,5 @@ void Connect::send_help() {
         res.add_number(ml->workers.size());
         res.add("\n");
     }
-    send.status("200 OK")->perform(res);
+    send.status("200 OK")->done(res);
 }
