@@ -6,3 +6,4 @@ docker/ijson
 /info
 /todo
 /test/
+__pycache__
