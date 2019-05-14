@@ -11,12 +11,12 @@ ijson helps to make RPC communication via http where both clients and workers ar
 * Using Keep-Alive to detect if worker is ok
 * Docker image ~9Mb (proxy itself is ~100kb)
 
-### Start ijson
+#### Start ijson
 ``` bash
 docker run -i -p 8001:8001 lega911/ijson
 ```
 
-### Options
+#### Options
 ``` bash
 > ijson
   --host 0.0.0.0:8001  # bind host:port
@@ -24,7 +24,7 @@ docker run -i -p 8001:8001 lega911/ijson
   --log 3  # mask for logs
 ```
 
-### Example with curl
+#### Example with curl (client + worker)
 ``` bash
 # 1. a worker publishes rpc command
 curl -d '{"params": "/test/command"}' http://localhost:8001/rpc/add
@@ -39,15 +39,14 @@ curl -d '{"id": 123, "result": "data received"}' http://localhost:8001/rpc/resul
 # client receives {"id": 123, "result": "data received"}
 ```
 
-### Python example
+#### Python client
 ``` python
-import requests
-
-# client
 response = requests.post('http://127.0.0.1:8001/test/command', json={'id': 1, 'params': 'Hello'})
 print(response.json())
+```
 
-# worker
+#### Python worker
+``` python
 while True:
     request = session.post('http://127.0.0.1:8001/rpc/add', json={'params': '/test/command'}).json()
     
