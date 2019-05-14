@@ -48,8 +48,10 @@ print(response.json())
 #### Python worker
 ``` python
 while True:
-    request = session.post('http://127.0.0.1:8001/rpc/add', json={'params': '/test/command'}).json()
+    # get a request
+    request = requests.post('http://127.0.0.1:8001/rpc/add', json={'params': '/test/command'}).json()
     
+    # send a response
     response = {'id': request['id'], 'result': request['params'] + ' world!'}
-    session.post('http://127.0.0.1:8001/rpc/result', json=response)
+    requests.post('http://127.0.0.1:8001/rpc/result', json=response)
 ```
