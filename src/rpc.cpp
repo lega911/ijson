@@ -324,8 +324,17 @@ int RpcServer::_add_worker(ISlice name, Connect *worker) {
             continue;
         }
         if(worker->noid) break;
-        if(client->id.empty()) client->gen_id();
-        sid = client->id.as_string();
+        Slice id = client->id;
+        if(id.empty()) {
+            id = client->jdata.get_id();
+            if(id.empty()) {
+                client->gen_id();
+                id = client->id;
+            } else {
+                client->id.set(id);
+            }
+        }
+        sid = id.as_string();
         if(wait_response[sid] != NULL) {
             // colision id
             if(log & 2) std::cout << ltime() << "collision id\n";
