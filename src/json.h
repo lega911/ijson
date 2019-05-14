@@ -5,8 +5,6 @@
 
 #include "utils.h"
 
-// --> {"jsonrpc": "2.0", "method": "subtract", "params": [42, 23], "id": 1}
-// <-- {"jsonrpc": "2.0", "result": 19, "id": 1}
 
 class JsonParser {
 private:
@@ -29,7 +27,7 @@ public:
     Slice method;
     Slice id;
     Slice params;
-    Slice name;
+    Buffer name;
     bool fail_on_disconnect;
     bool noid;
     

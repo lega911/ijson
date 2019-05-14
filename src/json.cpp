@@ -10,6 +10,17 @@ void JsonParser::reset() {
     this->noid = false;
 };
 
+void unescape(Buffer &s) {
+    char *p = s.ptr();
+    int n = 0;
+    for(int i=0;i<s.size();i++) {
+        if(p[i] == '\\') continue;
+        p[n] = p[i];
+        n++;
+    }
+    s.resize(0, n);
+}
+
 int JsonParser::_parse_object(ISlice buf, bool is_params) {
     if(buf.size() < 10) throw error::InvalidData();
     const char *ptr = buf.ptr();
@@ -67,8 +78,10 @@ int JsonParser::_parse_object(ISlice buf, bool is_params) {
                 if(skip_body) return 1;
             }
         } else if(key.equal("params")) this->params = value;
-        else if(key.equal("name")) this->name = value;
-        else if(key.equal("fail_on_disconnect")) this->fail_on_disconnect = value.equal("true");
+        else if(key.equal("name")) {
+            this->name.set(value);
+            unescape(this->name);
+        } else if(key.equal("fail_on_disconnect")) this->fail_on_disconnect = value.equal("true");
 
         strip();
         a = next();
