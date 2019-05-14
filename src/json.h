@@ -24,6 +24,7 @@ private:
         if(index >= buf.size()) throw error::OutOfIndex();
         return buf.ptr()[index];
     }
+    int _parse_object(ISlice buf, bool is_params);
 public:
     Slice method;
     Slice id;
@@ -32,7 +33,8 @@ public:
     bool fail_on_disconnect;
     bool noid;
     
-    int parse_object(ISlice buf);
+    int parse_object(ISlice buf) {return _parse_object(buf, false);}
+    int parse_object(ISlice buf, bool is_params) {return _parse_object(buf, is_params);}
     void reset();
 };
 
@@ -55,7 +57,7 @@ private:
         params_parsed = true;
         ensure_main();
         if(main.params.empty()) return;
-        if(main.params.ptr()[0] == '{') params.parse_object(main.params);
+        if(main.params.ptr()[0] == '{') params.parse_object(main.params, true);
         else _name = main.params;
     }
 public:

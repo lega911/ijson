@@ -10,7 +10,7 @@ void JsonParser::reset() {
     this->noid = false;
 };
 
-int JsonParser::parse_object(ISlice buf) {
+int JsonParser::_parse_object(ISlice buf, bool is_params) {
     if(buf.size() < 10) throw error::InvalidData();
     const char *ptr = buf.ptr();
     if(ptr[0] != '{') throw error::InvalidData();
@@ -55,17 +55,20 @@ int JsonParser::parse_object(ISlice buf) {
 
         if(key.equal("method")) {
             this->method = value;
-            if(!value.starts_with("/rpc/")) {
+            if(!is_params && !value.starts_with("/rpc/")) {
                 skip_body = true;
                 if(this->id.valid()) return 1;
             }
         } else if(key.equal("id")) {
-            this->id = value;
-            if(skip_body) return 1;
+            if(is_params) {
+                this->noid = value.equal("false");
+            } else {
+                this->id = value;
+                if(skip_body) return 1;
+            }
         } else if(key.equal("params")) this->params = value;
         else if(key.equal("name")) this->name = value;
         else if(key.equal("fail_on_disconnect")) this->fail_on_disconnect = value.equal("true");
-        else if(key.equal("id")) this->noid = value.equal("false");
 
         strip();
         a = next();

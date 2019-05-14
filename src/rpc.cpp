@@ -476,11 +476,15 @@ int RpcServer::worker_result_noid(Connect *worker) {
 void RpcServer::on_disconnect(IConnect *conn) {
     Connect *c = (Connect*)conn;
     if(!c->fail_on_disconnect) return;
-    if(c->noid && c->status == STATUS_WAIT_RESULT) {
-        if(!c->client) throw Exception("No client");
-        c->client->send.status("503 Service Unavailable")->done();
-        c->client->status = STATUS_NET;
-    } else {
+    if(c->noid) {
+        if(c->status == STATUS_WAIT_RESULT) {
+            if(!c->client) throw Exception("No client");
+            c->client->send.status("503 Service Unavailable")->done();
+            c->client->status = STATUS_NET;
+        } else if(c->client) {
+            throw error::NotImplemented("Client is linked to pending worker");
+        }
+    } else if(c->client) {
         worker_result(c->client->id, NULL);
     }
     if(c->client) {
