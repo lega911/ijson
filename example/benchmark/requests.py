@@ -20,6 +20,7 @@ class Session:
         if data:
             curl.setopt(pycurl.POSTFIELDS, data)
         curl.setopt(pycurl.WRITEDATA, buffer)
+        curl.setopt(pycurl.HTTPHEADER, ['Accept-Encoding:', 'Content-Type:', 'Accept:', 'User-Agent:'])
         curl.perform()
 
         response = buffer.getvalue().decode('utf8')
