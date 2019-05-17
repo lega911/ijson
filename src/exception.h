@@ -55,7 +55,12 @@ namespace error {
         using Exception::Exception;
         NoMemory() : Exception("No memory") {};
     };
-
 }
+
+#ifdef DEBUG
+    // ./ijson.debug 2>&1 | c++filt
+    void fatal_error(int sig);
+    void catch_fatal();
+#endif
 
 #endif /* EXCEPTION_H */

@@ -1,11 +1,10 @@
 
 #include <iostream>
 #include "rpc.h"
+#include "exception.h"
 
 
-const char *help_info = "\
-    ijson 0.1.2\n\
-\n\
+const char *help_info = "\n\
     --host 127.0.0.1:8001\n\
     --filter 127.0.0.1/32\n\
     --log <option>\n\
@@ -24,7 +23,12 @@ const char *help_info = "\
         16 - recv / send content\n\
 ";
 
+
 int main(int argc, char** argv) {
+    #ifdef DEBUG
+        catch_fatal();
+    #endif
+
     int port = 8001;
     Buffer host;
     RpcServer server;
@@ -55,7 +59,6 @@ int main(int argc, char** argv) {
             }
         } else if(s.equal("--filter")) {
             if(next.valid()) {
-                std::cout << "filter " << next.as_string() << endl;
                 NetFilter nf(next);
                 server.net_filter.push_back(nf);
                 i++;
@@ -78,6 +81,7 @@ int main(int argc, char** argv) {
                 return 1;
             }
         } else if(s.equal("--help")) {
+            std::cout << "ijson " << ijson_version << std::endl;
             std::cout << help_info;
             return 0;
         } else {

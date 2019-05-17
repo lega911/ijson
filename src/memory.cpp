@@ -23,7 +23,8 @@
         free(ptr);
     }
 
-    void * operator new(std::size_t n) throw(std::bad_alloc)
+
+    void * operator new(decltype(sizeof(0)) n) noexcept(false)
     {
         return _malloc(n);
     }

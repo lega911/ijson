@@ -2,6 +2,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+static const char *ijson_version = "0.2.0";
+
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>

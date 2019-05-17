@@ -139,7 +139,7 @@ Slice JsonParser::read_string() {
 /* JData */
 
 void JData::parse(ISlice data) {
-    _data.set(data);
+    if(!data.empty()) _data.set(data);
     reset();
 }
 

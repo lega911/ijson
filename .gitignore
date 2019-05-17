@@ -2,6 +2,7 @@
 /ijson
 /ijson.debug
 docker/ijson
+docker/ijson.debug
 /src/main.bin
 /info
 /todo

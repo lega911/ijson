@@ -518,7 +518,9 @@ void Connect::send_details() {
 void Connect::send_help() {
     RpcServer *server = (RpcServer*)this->server;
     Buffer res(256);
-    res.add("/rpc/add\n/rpc/result\n/rpc/details\n/rpc/help\n\n");
+    res.add("ijson ");
+    res.add(ijson_version);
+    res.add("\n\n/rpc/add\n/rpc/result\n/rpc/details\n/rpc/help\n\n");
     for(const auto &it : server->methods) {
         string name = it.first;
         MethodLine *ml = it.second;
