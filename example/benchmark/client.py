@@ -1,14 +1,18 @@
 
+import sys
 from requests import Session
 import time
 
-start = time.time()
+port = 8001
+if len(sys.argv) >= 2:
+    port = sys.argv[1]
 
+start = time.time()
 counter = Session()
 s = Session()
 prev = 0
 for i in range(0, 10**10):
-    response = s.post('http://localhost:8001/sum', json={'a': 5, 'b': 8})
+    response = s.post(f'http://localhost:{port}/sum', json={'a': 5, 'b': 8})
     assert response['result'] == 13
 
     now = time.time()

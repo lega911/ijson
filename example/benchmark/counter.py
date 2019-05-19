@@ -20,7 +20,7 @@ def show():
         time.sleep(1)
         now = time.time()
         dur = now - start
-        print(int((count - prev) / dur), 'rps')
+        print(int((count - prev) / dur), 'ops')
         start = now
         prev = count
 
