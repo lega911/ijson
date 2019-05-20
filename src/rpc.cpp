@@ -272,8 +272,13 @@ void Connect::header_completed() {
 void Connect::rpc_add() {
     Slice name(this->name);
     if(name.empty()) name = this->jdata.get_name();
-    this->noid = this->jdata.get_noid();
-    this->fail_on_disconnect = this->noid || jdata.get_fail_on_disconnect();
+    if(this->id.equal("false")) {
+        this->noid = true;
+        this->fail_on_disconnect = true;
+    } else {
+        this->noid = this->jdata.get_noid();
+        this->fail_on_disconnect = this->noid || jdata.get_fail_on_disconnect();
+    }
 
     if(name.empty()) {
         this->send.status("400 No name")->done();
