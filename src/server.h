@@ -17,6 +17,7 @@ public:
     HttpSender *status(const char *status);
     HttpSender *header(const char *key, ISlice &value);
     void done(ISlice &body);
+    void done(int error);
     void done();
 };
 

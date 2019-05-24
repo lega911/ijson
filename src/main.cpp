@@ -8,6 +8,7 @@ const char *help_info = "\n\
     --host 127.0.0.1:8001\n\
     --filter 127.0.0.1/32\n\
     --log <option>\n\
+    --jsonrpc2\n\
 \n\
     /rpc/add\n\
     /rpc/result\n\
@@ -84,6 +85,8 @@ int main(int argc, char** argv) {
             std::cout << "ijson " << ijson_version << std::endl;
             std::cout << help_info;
             return 0;
+        } else if(s.equal("--jsonrpc2")) {
+            server.jsonrpc2 = true;
         } else {
             std::cout << "Wrong option (" << s.as_string() << ")\n\nuse --help\n";
             return 1;

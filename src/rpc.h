@@ -68,11 +68,14 @@ class RpcServer : public TcpServer {
 private:
     int _add_worker(ISlice name, Connect *worker);
 public:
+    bool jsonrpc2;
     std::map<std::string, MethodLine*> methods;
     std::map<std::string, Connect*> wait_response;
     std::vector<NetFilter> net_filter;
     
-    RpcServer() : TcpServer() {};
+    RpcServer() : TcpServer() {
+        jsonrpc2=false;
+    };
     IConnect* on_connect(int fd, uint32_t ip) {
         if(net_filter.size()) {
             bool ok=false;

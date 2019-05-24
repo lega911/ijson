@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "rpc.h"
 
 
 #define eitem struct epoll_event
@@ -216,7 +217,7 @@ void TcpServer::loop() {
                     this->connections[fd] = conn;
                     conn->link();
 
-                    if(log & 8) std::cout << ltime() << "connect " << fd << " " << (void*)conn << std::endl;
+                    if(log & 16) std::cout << ltime() << "connect " << fd << " " << (void*)conn << std::endl;
 
                     eitem event = {0};
                     event.data.fd = fd;
@@ -275,7 +276,7 @@ void TcpServer::loop() {
         if(dead_connections.size()) {
             for(IConnect *conn : dead_connections) {
                 if(conn->get_link() == 0) {
-                    if(log & 8) std::cout << ltime() << "delete connection " << (void*)conn << std::endl;
+                    if(log & 16) std::cout << ltime() << "delete connection " << (void*)conn << std::endl;
                     delete conn;
                 }
             }
@@ -287,7 +288,7 @@ void TcpServer::loop() {
 
 void TcpServer::_close(int fd) {
     IConnect* conn=this->connections[fd];
-    if(log & 8) std::cout << ltime() << "disconnect socket " << fd << " " << (void*)conn << std::endl;
+    if(log & 16) std::cout << ltime() << "disconnect socket " << fd << " " << (void*)conn << std::endl;
     if(conn == NULL) throw Exception("_close: connection is null");
     conn->close();
     this->on_disconnect(conn);
@@ -342,4 +343,20 @@ void HttpSender::done() {
 
     conn->send_buffer.add("Content-Length: 0\r\n\r\n");
     conn->write_mode(true);
+};
+
+void HttpSender::done(int error) {
+    if(conn == NULL) throw error::NotImplemented();
+    if(!((RpcServer*)conn->server)->jsonrpc2) done();
+    else {
+        Slice msg;
+        if(error == -32700) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": null}");
+        else if(error == -32600) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}");
+        else if(error == -32601) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": null}");
+        else if(error == -32602) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32602, \"message\": \"Invalid params\"}, \"id\": null}");
+        else if(error == -1) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32001, \"message\": \"Error, see http code\"}, \"id\": null}");
+        else if(error == 1) msg.set("{\"jsonrpc\": \"2.0\", \"result\": true, \"id\": null}");
+        else msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32603, \"message\": \"Internal error\"}, \"id\": null}");
+        done(msg);
+    }
 };
