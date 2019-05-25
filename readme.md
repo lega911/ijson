@@ -2,6 +2,11 @@
 
 ![Scheme](files/ijson.png)
 
+#### Benchmark
+![Performance](files/performance.png)
+![Memory usage](files/memory_usage.png)
+
+#### Description
 ijson helps to make RPC communication via http where both clients and workers are http-clients.
 * It's fast - it based on c++ and epoll
 * JsonRPC2 partly supported
