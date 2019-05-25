@@ -1,6 +1,6 @@
 ### ijson - inverted json (inverted jsonrpc proxy)
 
-![Scheme](ijson.png)
+![Scheme](files/ijson.png)
 
 ijson helps to make RPC communication via http where both clients and workers are http-clients.
 * It's fast - it based on c++ and epoll
@@ -22,6 +22,7 @@ docker run -i -p 8001:8001 lega911/ijson
   --host 0.0.0.0:8001  # bind host:port
   --filter 192.168.0.0/24 --filter 70.0.0.0/8  # ip filters for clients
   --log 3  # mask for logs
+  --jsonrpc2
 ```
 
 #### Example with curl (client + worker)
