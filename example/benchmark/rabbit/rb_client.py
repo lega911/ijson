@@ -2,8 +2,7 @@
 import pika
 import uuid
 import ujson
-import time
-from requests import Session, Counter
+from requests import Counter
 
 
 class Client(object):
