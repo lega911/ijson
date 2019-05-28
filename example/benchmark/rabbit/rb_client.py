@@ -3,7 +3,7 @@ import pika
 import uuid
 import ujson
 import time
-from requests import Session
+from requests import Session, Counter
 
 
 class Client(object):
@@ -40,16 +40,9 @@ class Client(object):
             self.connection.process_data_events()
         return ujson.loads(self.response)
 
-start = time.time()
-prev = 0
-counter = Session()
+counter = Counter()
 rpc = Client()
 for i in range(10**10):
     response = rpc.call({'a': 8, 'b': 5})
     assert response['result'] == 13
-
-    now = time.time()
-    if now - start > 0.2:
-        counter.post('http://localhost:7000/', data=str(i - prev).encode('utf8'))
-        start = now
-        prev = i
+    counter.set(i)

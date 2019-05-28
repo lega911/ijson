@@ -1,4 +1,5 @@
 
+import time
 import pycurl
 from io import BytesIO
 import ujson
@@ -57,3 +58,16 @@ class Session:
         if response:
             return ujson.loads(response)
 
+
+class Counter:
+    def __init__(self):
+        self.start = time.time()
+        self.prev = 0
+        self.net = Session()
+
+    def set(self, index):
+        now = time.time()
+        if now - self.start > 0.2:
+            self.net.post('http://localhost:7000/', data=str(index - self.prev).encode('utf8'))
+            self.start = now
+            self.prev = index
