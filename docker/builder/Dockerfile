@@ -1,5 +1,5 @@
-FROM alpine:3.9
+FROM debian:stretch
 
-RUN apk update && apk add --no-cache binutils cmake make libgcc musl-dev gcc g++ util-linux-dev
+RUN apt update && apt-get install -y make g++ uuid-dev
 
 WORKDIR /cpp
