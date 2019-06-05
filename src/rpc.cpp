@@ -130,6 +130,7 @@ int Connect::read_method(Slice &line) {
         if(buf[i] != ' ') continue;
 
         if(part == 1) {
+            if(i>start+1 && buf[start] == '/') start++;
             path.set(&buf[start], i - start);
             break;
         }
@@ -175,14 +176,14 @@ void Connect::header_completed() {
         std::cout << ltime() << this->path.as_string() << " " << this->body.size() << "b " << repr.ptr();
     }
     
-    if(this->path.equal("/echo")) {
+    if(this->path.equal("echo")) {
         Slice response("ok");
         this->send.status("200 OK")->done(response);
         return;
     }
 
     #ifdef DEBUG
-    if(this->path.equal("/debug")) {
+    if(this->path.equal("debug")) {
         Buffer r(32);
         r.add("Memory allocated: ");
         r.add_number(get_memory_allocated());
@@ -194,7 +195,7 @@ void Connect::header_completed() {
 
     RpcServer *server = (RpcServer*)this->server;
     if(noid) {
-        if(!this->path.equal("/rpc/result")) {
+        if(!this->path.equal("rpc/result")) {
             this->send.status("400 Result expected")->done(-1);
             return;
         };
@@ -213,8 +214,9 @@ void Connect::header_completed() {
     Slice id(this->id);
     jdata.parse(this->body);
 
-    if(this->path.equal("/rpc/call")) {
+    if(this->path.equal("rpc/call")) {
         method = jdata.get_method();
+        if(!method.empty() && method.ptr()[0] == '/') method.remove(1);
         if(method.empty()) {
             this->send.status("400 No method")->done(-32601);
             return;
@@ -223,10 +225,10 @@ void Connect::header_completed() {
         method = this->path;
     };
 
-    if(method.equal("/rpc/add")) {
+    if(method.equal("rpc/add")) {
         rpc_add();
         return;
-    } else if(method.equal("/rpc/result")) {
+    } else if(method.equal("rpc/result")) {
         if(id.empty()) id = jdata.get_id();
         if(id.empty()) {
             if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
@@ -245,10 +247,10 @@ void Connect::header_completed() {
         }
         status = STATUS_NET;
         return;
-    } else if(method.equal("/rpc/details")) {
+    } else if(method.equal("rpc/details")) {
         send_details();
         return;
-    } else if(method.equal("/") || method.equal("/rpc/help")) {
+    } else if(method.equal("/") || method.equal("rpc/help")) {
         send_help();
         return;
     }
@@ -308,7 +310,8 @@ void RpcServer::add_worker(ISlice name, Connect *worker) {
     }
 }
 
-int RpcServer::_add_worker(ISlice name, Connect *worker) {
+int RpcServer::_add_worker(Slice name, Connect *worker) {
+    if(!name.empty() && name.ptr()[0] == '/') name.remove(1);
     std::string key = name.as_string();
     MethodLine *ml = this->methods[key];
     if(ml == NULL) {
@@ -525,7 +528,7 @@ void Connect::send_help() {
     Buffer res(256);
     res.add("ijson ");
     res.add(ijson_version);
-    res.add("\n\n/rpc/add\n/rpc/result\n/rpc/details\n/rpc/help\n\n");
+    res.add("\n\nrpc/add\nrpc/result\nrpc/details\nrpc/help\n\n");
     for(const auto &it : server->methods) {
         string name = it.first;
         MethodLine *ml = it.second;

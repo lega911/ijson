@@ -66,7 +66,7 @@ int JsonParser::_parse_object(ISlice buf, bool is_params) {
 
         if(key.equal("method")) {
             this->method = value;
-            if(!is_params && !value.starts_with("/rpc/")) {
+            if(!is_params && !value.starts_with("/rpc/") && !value.starts_with("rpc/")) {
                 skip_body = true;
                 if(this->id.valid()) return 1;
             }

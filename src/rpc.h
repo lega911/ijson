@@ -66,7 +66,7 @@ public:
 
 class RpcServer : public TcpServer {
 private:
-    int _add_worker(ISlice name, Connect *worker);
+    int _add_worker(Slice name, Connect *worker);
 public:
     bool jsonrpc2;
     std::map<std::string, MethodLine*> methods;
