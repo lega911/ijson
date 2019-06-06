@@ -40,6 +40,13 @@
   $ taskset 0xfffc python3 client.py &
 
 
+# GRPC
+
+2) docker run -it --rm -v `pwd`/grpc:/app --network host py
+  $ taskset 0x1 python3 worker.py &
+  $ taskset 0xfffc python3 client.py &
+
+
 # Nginx proxypass + force keepalive
 
 2) docker run -it --network host -v `pwd`/async:/app --entrypoint bash nginx:1.15

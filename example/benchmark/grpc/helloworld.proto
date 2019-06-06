@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package testcodegen;
+
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+
+message HelloRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message HelloReply {
+  int32 result = 1;
+}
