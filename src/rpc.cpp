@@ -487,7 +487,7 @@ void RpcServer::on_disconnect(IConnect *conn) {
     if(c->noid) {
         if(c->status == STATUS_WAIT_RESULT) {
             if(!c->client) throw Exception("No client");
-            c->client->send.status("503 Service Unavailable")->done(-1);
+            if(!c->client->is_closed()) c->client->send.status("503 Service Unavailable")->done(-1);
             c->client->status = STATUS_NET;
         } else if(c->client) {
             throw error::NotImplemented("Client is linked to pending worker");
