@@ -15,7 +15,7 @@
 #include "rpc.h"
 
 
-#define eitem struct epoll_event
+typedef struct epoll_event eitem;
 #define MAX_EVENTS 16384
 #define BUF_SIZE 16384
 
@@ -31,19 +31,14 @@ void TcpServer::listen_socket() {
         throw Exception("setsockopt");
     }
 
-    //sockaddr serv_addr;
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    //serv_addr.sin_addr.s_addr = INADDR_ANY;
-    //serv_addr.sin_addr.s_addr = INADDR_LOOPBACK;
-    //serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     serv_addr.sin_addr.s_addr = inet_addr(_host.as_string().c_str());
     serv_addr.sin_port = htons(_port);
 
-    if (bind(serverfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        throw Exception("Error on binding, port is busy?");
-    }
+    int r = bind(serverfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    if(r < 0) throw Exception("Error on binding, port is busy?");  // fix vscode highlighting
 
     if (listen(serverfd, 64) < 0) {
         throw Exception("ERROR on listen");
@@ -183,7 +178,7 @@ void TcpServer::loop() {
             if (events[i].data.fd == serverfd) {
                 struct sockaddr_in peer_addr;
                 socklen_t peer_addr_len = sizeof(peer_addr);
-                int fd = accept(serverfd, (struct sockaddr*)&peer_addr, &peer_addr_len);
+                int fd = accept(serverfd, (struct sockaddr *)&peer_addr, &peer_addr_len);
                 if (fd < 0) {
                     if (errno == EAGAIN || errno == EWOULDBLOCK) {
                         if(log & 1) std::cout << ltime() << "accept: EAGAIN, EWOULDBLOCK\n";
