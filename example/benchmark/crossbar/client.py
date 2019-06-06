@@ -9,10 +9,10 @@ class Component(ApplicationSession):
     @inlineCallbacks
     def onJoin(self, details):
         counter = Counter()
-        for i in range(0, 10**10):
+        while True:
             response = yield self.call('func', {'a': 1, 'b': 2})
             assert response['result'] == 3
-            counter.set(i)
+            counter.inc()
 
         self.leave()
 

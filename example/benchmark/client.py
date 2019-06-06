@@ -8,7 +8,7 @@ if len(sys.argv) >= 2:
 
 counter = Counter()
 s = Session()
-for i in range(0, 10**10):
+while True:
     response = s.post(f'http://localhost:{port}/sum', json={'a': 5, 'b': 8})
     assert response['result'] == 13
-    counter.set(i)
+    counter.inc()

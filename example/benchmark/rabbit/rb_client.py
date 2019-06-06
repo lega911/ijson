@@ -41,7 +41,7 @@ class Client(object):
 
 counter = Counter()
 rpc = Client()
-for i in range(10**10):
+while True:
     response = rpc.call({'a': 8, 'b': 5})
     assert response['result'] == 13
-    counter.set(i)
+    counter.inc()

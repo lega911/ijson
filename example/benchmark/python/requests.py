@@ -62,12 +62,14 @@ class Session:
 class Counter:
     def __init__(self):
         self.start = time.time()
-        self.prev = 0
         self.net = Session()
+        self.count = 0
 
-    def set(self, index):
+    def inc(self):
+        self.count += 1
         now = time.time()
-        if now - self.start > 0.2:
-            self.net.post('http://localhost:7000/', data=str(index - self.prev).encode('utf8'))
-            self.start = now
-            self.prev = index
+        if now - self.start < 0.2:
+            return
+        self.net.post('http://localhost:7000/', data=str(self.count).encode('utf8'))
+        self.start = now
+        self.count = 0
