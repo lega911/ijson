@@ -32,16 +32,12 @@
             ],
             "transports": [
                 {
-                    "type": "web",
+                    "type": "rawsocket",
                     "endpoint": {
                         "type": "tcp",
                         "port": 8080
                     },
-                    "paths": {
-                        "ws": {
-                            "type": "websocket"
-                        }
-                    }
+                    "serializers": ["cbor"]
                 }
             ]
         }

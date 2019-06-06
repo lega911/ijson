@@ -22,5 +22,5 @@ class Component(ApplicationSession):
 
 
 if __name__ == '__main__':
-    runner = ApplicationRunner("ws://127.0.0.1:8080/ws", "realm1")
+    runner = ApplicationRunner("rs://localhost:8080", "realm1")
     runner.run(Component)
