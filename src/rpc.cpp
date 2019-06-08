@@ -423,7 +423,10 @@ int RpcServer::client_request(ISlice name, Connect *client) {
             worker->status = STATUS_WAIT_RESULT;
         } else {
             Slice id(client->id);
-            if(id.empty()) id = client->jdata.get_id();
+            if(id.empty()) {
+                id = client->jdata.get_id();
+                client->id.set(id);
+            }
             if(id.empty()) {
                 client->gen_id();
                 id.set(client->id);
