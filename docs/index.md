@@ -4,12 +4,21 @@
 A few statements:
 * Inverted Json (iJson) never transforms body of http-request, so it just forwards it as is, from client to worker and vise-versa.
 * You can send binary data (not only json)
-* First slash is removed from method, so `/test/command` is the same `test/command`
+* First slash is removed from method, so `/test/command` is the same as `test/command`
 * Id is optional
 * *for all python examples need to **import requests**.*
 
+### Content
+* [Start Inverted Json](#start-inverted-json)
+* [Default mode](#default-mode-curl)
+* [If client doesn't provide an id](#if-client-doesn-t-provide-an-id)
+* [Using /rpc/call, JsonRPC2 example](#using-rpccall-jsonrpc2-example)
+* [Send binary data, set method's name and id in headers](#send-binary-data-set-methods-name-and-id-in-headers)
+* [Worker: mode "fail_on_disconnect"](#worker-mode-fail_on_disconnect)
+* [Worker: keep-alive mode without id](index.md#worker-keep-alive-mode-without-id)
 
-Start Inverted Json
+
+### Start Inverted Json
 ```bash
 docker run -i -p 8001:8001 lega911/ijson
 ```
@@ -51,7 +60,9 @@ while True:
 <hr/>
 
 
-### If client doesn't provide an id, the id will be generated as uuid and set to headers
+### If client doesn't provide an id
+in this case an id will be generated as uuid and set to headers.
+
 1. a worker publishes rpc command `/test/command`
 ```bash
 curl -v -d '{"params": "/test/command"}' http://localhost:8001/rpc/add
