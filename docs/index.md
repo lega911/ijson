@@ -11,7 +11,7 @@ A few statements:
 ### Content
 * [Start Inverted Json](#start-inverted-json)
 * [Default mode](#default-mode-curl)
-* [If client doesn't provide an id](#if-client-doesn-t-provide-an-id)
+* [If client doesn't provide an id](#if-client-doesnt-provide-an-id)
 * [Using /rpc/call, JsonRPC2 example](#using-rpccall-jsonrpc2-example)
 * [Send binary data, set method's name and id in headers](#send-binary-data-set-methods-name-and-id-in-headers)
 * [Worker: mode "fail_on_disconnect"](#worker-mode-fail_on_disconnect)
