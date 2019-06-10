@@ -8,5 +8,4 @@ docker-alpine/ijson.debug
 /src/main.bin
 /info
 /todo
-/test/
 __pycache__

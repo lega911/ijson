@@ -1,4 +1,4 @@
-.PHONY: debug release info build clean
+.PHONY: debug release info build clean test
 
 info:
 	echo debug release
@@ -13,3 +13,5 @@ alpine:
 	cd /cpp
 	g++ src/*.cpp -luuid -std=c++17 -O2 -DALPINE -o /cpp/docker-alpine/ijson
 	g++ src/*.cpp -luuid -std=c++17 -DDEBUG -DALPINE -rdynamic -o /cpp/docker-alpine/ijson.debug
+test:
+	cd tests; pytest37 main.py
