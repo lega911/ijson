@@ -5,17 +5,17 @@
 # Example for testing RabbitMQ:
 
 2) ./rabbit/run.sh         # run rabbitmq
-3) docker run -it --rm --network host -v `pwd`:/app py
-  $ taskset 0xfffc python3 /app/rabbit/rb_worker.py &     # start worker
-  $ taskset 0xfffc python3 /app/rabbit/rb_client.py &     # start client
+3) docker run -it --rm --network host -v `pwd`/rabbit:/app py
+  $ taskset 0xfffc python3 worker.py &     # to start worker
+  $ taskset 0xfffc python3 client.py &     # to start client
 
 
 # Inverted Json
 
 2) docker run -it --rm --network host --entrypoint sh lega911/ijson -c "taskset 0x1 /ijson --host 0.0.0.0"
 3) docker run -it --rm --network host -v `pwd`:/app py
-  $ taskset 0xfffc python3 /app/worker.py &     # start worker
-  $ taskset 0xfffc python3 /app/client.py &     # start client
+  $ taskset 0xfffc python3 worker.py &     # to start worker
+  $ taskset 0xfffc python3 client.py &     # to start client
 
 
 # Crossbar.io
