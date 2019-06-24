@@ -9,3 +9,5 @@ docker-alpine/ijson.debug
 /info
 /todo
 __pycache__
+.pytest_cache
+/test
