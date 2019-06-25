@@ -3,9 +3,9 @@
 info:
 	echo debug release
 debug:
-	g++ src/*.cpp -luuid -std=c++17 -DDEBUG -rdynamic -o ijson.debug
+	g++ src/*.cpp -luuid -pthread -std=c++17 -DDEBUG -rdynamic -o ijson.debug
 release:
-	g++ src/*.cpp -luuid -std=c++17 -O2 -o ijson
+	g++ src/*.cpp -luuid -pthread -std=c++17 -O2 -o ijson
 build: debug release
 clean:
 	rm -f ijson ijson.debug

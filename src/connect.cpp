@@ -1,14 +1,63 @@
 
-#include "rpc.h"
+#include <string.h>
+#include <sys/socket.h>
 #include <string.h>
 #include <uuid/uuid.h>
-#include "utils.h"
-#include "json.h"
+#include "connect.h"
+
+
+void Connect::unlink() {
+    _link--;
+    if(_link == 0) loop->dead_connections.push_back(this);
+    else if(_link < 0) throw Exception("Wrong link count");
+};
+
+void Connect::write_mode(bool active) {
+    if(active) {
+        if(_socket_status & 2) return;
+        _socket_status |= 2;
+    } else {
+        if(!(_socket_status & 2)) return;
+        _socket_status = _socket_status & 0xfd;
+    }
+    loop->set_poll_mode(fd, _socket_status);
+}
+
+void Connect::read_mode(bool active) {
+    if(active) {
+        if(_socket_status & 1) return;
+        _socket_status |= 1;
+    } else {
+        if(!(_socket_status & 1)) return;
+        _socket_status = _socket_status & 0xfe;
+    }
+    loop->set_poll_mode(fd, _socket_status);
+}
+
+int Connect::raw_send(const void *buf, uint size) {
+    return ::send(this->fd, buf, size, 0);
+}
+
+void Connect::on_send() {
+    if(send_buffer.size()) {
+        int sent = this->raw_send(send_buffer.ptr(), send_buffer.size());
+        if(sent < 0) throw error::NotImplemented("Not implemented: sent < 0");
+        send_buffer.remove_left(sent);
+    }
+
+    if(send_buffer.size() == 0) {
+        if(this->keep_alive) {
+            this->write_mode(false);
+        } else {
+            this->close();
+        }
+    }
+};
 
 
 void Connect::on_recv(char *buf, int size) {
     if(!(status == STATUS_NET || (status == STATUS_WAIT_RESULT && noid))) {
-        if(server->log & 4) cout << "warning: data is come, but connection is not ready\n";
+        if(server->log & 4) std::cout << "warning: data is come, but connection is not ready\n";
         buffer.add(buf, size);
         return;
     }
@@ -76,11 +125,9 @@ void Connect::on_recv(char *buf, int size) {
                         continue;
                     } else {
                         throw error::NotImplemented("previous request is not finished");
-                        /*
-                        buffer.set(data);
-                        cout << "warning: previous request is not finished\n";
-                        break;
-                        */
+                        // buffer.set(data);
+                        // cout << "warning: previous request is not finished\n";
+                        // break;
                     }
                 }
             }
@@ -101,7 +148,7 @@ void Connect::on_recv(char *buf, int size) {
                 if(!noid) throw error::NotImplemented("noid is false");
             }
             if(this->read_method(line) != 0) {
-                if(server->log & 2) cout << ltime() << "Wrong http header\n";
+                if(server->log & 2) std::cout << ltime() << "Wrong http header\n";
                 this->close();
                 return;
             }
@@ -161,7 +208,7 @@ void Connect::read_header(Slice &data) {
 void Connect::header_completed() {
     this->keep_alive = http_version == 11;
 
-    if(this->server->log & 16) {
+    if(server->log & 16) {
         Buffer repr(250);
         if(this->body.size() > 150) {
             repr.add(this->body.ptr(), 147);
@@ -193,13 +240,12 @@ void Connect::header_completed() {
     }
     #endif
 
-    RpcServer *server = (RpcServer*)this->server;
     if(noid) {
         if(!this->path.equal("rpc/result")) {
             this->send.status("400 Result expected")->done(-1);
             return;
         };
-        int r = server->worker_result_noid(this);
+        int r = loop->worker_result_noid(this);
         if(r == 0) {
             this->send.status("200 OK")->done(1);
         } else if(r == -2) {
@@ -234,7 +280,7 @@ void Connect::header_completed() {
             if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
             this->send.status("400 No id")->done(-1);
         } else {
-            int r = server->worker_result(id, this);
+            int r = loop->worker_result(id, this);
             if(r == 0) {
                 this->send.status("200 OK")->done(1);
             } else if(r == -2) {
@@ -255,14 +301,14 @@ void Connect::header_completed() {
         return;
     }
 
-    int r = server->client_request(method, this);
+    int r = loop->client_request(method, this);
     if(r == 0) {
         status = STATUS_WAIT_RESPONSE;
     } else if(r == -1) {
         if(server->log & 4) std::cout << ltime() << "404 no method " << method.as_string() << std::endl;
         this->send.status("404 Not Found")->done(-32601);
-    /*} else if(r == -2) {
-        this->send("400 No Id");*/
+    // } else if(r == -2) {
+    //    this->send("400 No Id");
     } else if(r == -3) {
         if(server->log & 4) std::cout << ltime() << "400 collision id " << method.as_string() << std::endl;
         this->send.status("400 Collision Id")->done(-1);
@@ -285,110 +331,9 @@ void Connect::rpc_add() {
     if(name.empty()) {
         this->send.status("400 No name")->done(-32602);
     } else {
-        ((RpcServer*)server)->add_worker(name, this);
+        loop->add_worker(name, this);
     }
 }
-
-void RpcServer::add_worker(ISlice name, Connect *worker) {
-    char *ptr = name.ptr();
-    int start = 0;
-    int i = 0;
-    Slice n;
-    for(;i<name.size();i++) {
-        if(ptr[i] == ',') {
-            n.set(&ptr[start], i - start);
-            start = i + 1;
-            if(_add_worker(n, worker) == 1) {
-                // worker is taken
-                return;
-            }
-        }
-    }
-    if(start < name.size()) {
-        n.set(&ptr[start], i - start);
-        _add_worker(n, worker);
-    }
-}
-
-int RpcServer::_add_worker(Slice name, Connect *worker) {
-    if(!name.empty() && name.ptr()[0] == '/') name.remove(1);
-    std::string key = name.as_string();
-    MethodLine *ml = this->methods[key];
-    if(ml == NULL) {
-        ml = new MethodLine();
-        this->methods[key] = ml;
-    }
-    ml->last_worker = get_time_sec();
-    Connect *client = NULL;
-    string sid;
-    while(ml->clients.size()) {
-        client = ml->clients.front();
-        ml->clients.pop_front();
-        client->unlink();
-        if(client->is_closed() || client->status != STATUS_WAIT_RESPONSE) {
-            // TODO: close wrong connection?
-            if(log & 8) std::cout << ltime() << "dead client\n";
-            client = NULL;
-            continue;
-        }
-        if(worker->noid) break;
-        Slice id = client->id;
-        if(id.empty()) {
-            id = client->jdata.get_id();
-            if(id.empty()) {
-                client->gen_id();
-                id = client->id;
-            } else {
-                client->id.set(id);
-            }
-        }
-        sid = id.as_string();
-        if(wait_response[sid] != NULL) {
-            // colision id
-            if(log & 2) std::cout << ltime() << "collision id\n";
-            client->send.status("400 Collision Id")->done(-1);
-            client->status = STATUS_NET;
-            client = NULL;
-            continue;
-        }
-        break;
-    }
-
-    if(client) {
-        if(worker->fail_on_disconnect) {
-            worker->client = client;
-            worker->client->link();
-        }
-        if(worker->noid) {
-            worker->send.status("200 OK")->header("Method", name)->done(client->body);
-            worker->status = STATUS_WAIT_RESULT;
-        } else {
-            worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->done(client->body);
-            wait_response[sid] = client;
-            client->link();
-            worker->status = STATUS_NET;
-        }
-        return 1;
-    } else {
-        if (ml->workers.size()) {
-            auto it=ml->workers.begin();
-            while (it != ml->workers.end()) {
-                Connect *conn = *it;
-                if(conn->is_closed() || conn == worker) {
-                    it = ml->workers.erase(it);
-                    conn->unlink();
-                } else {
-                    it++;
-                }
-            }
-        }
-
-        ml->workers.push_back(worker);
-        worker->link();
-        worker->status = STATUS_WAIT_JOB;
-        return 0;
-    }
-};
 
 void Connect::gen_id() {
     id.resize(36, 36);
@@ -397,119 +342,12 @@ void Connect::gen_id() {
     uuid_unparse_lower(uuid, id.ptr());
 }
 
-int RpcServer::client_request(ISlice name, Connect *client) {
-    auto it = this->methods.find(name.as_string());
-    if (it == this->methods.end()) return -1;
-    MethodLine *ml = it->second;
-
-    Connect *worker = NULL;
-    while (ml->workers.size()) {
-        worker = ml->workers.front();
-        ml->workers.pop_front();
-        worker->unlink();
-        if(worker->is_closed() || worker->status != STATUS_WAIT_JOB) {
-            // TODO: close wrong connection?
-            if(log & 8) std::cout << ltime() << "dead worker\n";
-            worker = NULL;
-            continue;
-        }
-        break;
-    };
-    if(worker) {
-        if(worker->noid) {
-            worker->client = client;
-            client->link();
-            worker->send.status("200 OK")->header("Method", name)->done(client->body);
-            worker->status = STATUS_WAIT_RESULT;
-        } else {
-            Slice id(client->id);
-            if(id.empty()) {
-                id = client->jdata.get_id();
-                if(!id.empty()) client->id.set(id);
-            }
-            if(id.empty()) {
-                client->gen_id();
-                id.set(client->id);
-            }
-            string sid = id.as_string();
-            if(wait_response[sid] != NULL) {
-                ml->workers.push_front(worker);
-                worker->link();
-                return -3;
-            }
-            if(worker->fail_on_disconnect) {
-                worker->client = client;
-                client->link();
-            }
-            worker->send.status("200 OK")->header("Id", id)->header("Method", name)->done(client->body);
-            wait_response[sid] = client;
-            client->link();
-            worker->status = STATUS_NET;
-        }
-    } else {
-        ml->clients.push_back(client);
-        client->link();
-    }
-    return 0;
-};
-
-int RpcServer::worker_result(ISlice id, Connect *worker) {
-    auto it = wait_response.find(id.as_string());
-    if(it == wait_response.end()) return -1;
-    Connect *client = it->second;
-    wait_response.erase(it);
-
-    client->unlink();
-    if(client->is_closed()) return -2;
-    if(worker) client->send.status("200 OK")->header("Id", id)->done(worker->body);
-    else client->send.status("503 Service Unavailable")->header("Id", id)->done(-1);
-    client->status = STATUS_NET;
-
-    return 0;
-};
-
-int RpcServer::worker_result_noid(Connect *worker) {
-    auto client = worker->client;
-    if(!client) throw error::NotImplemented("No connected client for noid");
-
-    worker->noid = false;
-    worker->fail_on_disconnect = false;
-    worker->client = NULL;
-    client->unlink();
-
-    if(client->is_closed()) return -2;
-    client->send.status("200 OK")->done(worker->body);
-    client->status = STATUS_NET;
-
-    return 0;
-};
-
-void RpcServer::on_disconnect(IConnect *conn) {
-    Connect *c = (Connect*)conn;
-    if(!c->fail_on_disconnect) return;
-    if(c->noid) {
-        if(c->status == STATUS_WAIT_RESULT) {
-            if(!c->client) throw Exception("No client");
-            if(!c->client->is_closed()) c->client->send.status("503 Service Unavailable")->done(-1);
-            c->client->status = STATUS_NET;
-        } else if(c->client) {
-            throw error::NotImplemented("Client is linked to pending worker");
-        }
-    } else if(c->client) {
-        worker_result(c->client->id, NULL);
-    }
-    if(c->client) {
-        c->client->unlink();
-        c->client = NULL;
-    };
-};
 
 void Connect::send_details() {
-    RpcServer *server = (RpcServer*)this->server;
     Buffer res(256);
     res.add("{");
-    for(const auto &it : server->methods) {
-        string name = it.first;
+    for(const auto &it : loop->methods) {
+        std::string name = it.first;
         MethodLine *ml = it.second;
         res.add("\"");
         res.add(name);
@@ -527,13 +365,12 @@ void Connect::send_details() {
 }
 
 void Connect::send_help() {
-    RpcServer *server = (RpcServer*)this->server;
     Buffer res(256);
     res.add("ijson ");
     res.add(ijson_version);
     res.add("\n\nrpc/add\nrpc/result\nrpc/details\nrpc/help\n\n");
-    for(const auto &it : server->methods) {
-        string name = it.first;
+    for(const auto &it : loop->methods) {
+        std::string name = it.first;
         MethodLine *ml = it.second;
         res.add(name);
         res.add("  x ");
@@ -542,3 +379,69 @@ void Connect::send_help() {
     }
     send.status("200 OK")->done(res);
 }
+
+
+/* HttpSender */
+
+HttpSender *HttpSender::status(const char *status) {
+    if(conn == NULL) throw error::NotImplemented();
+
+    conn->send_buffer.resize(256);
+    conn->send_buffer.add("HTTP/1.1 ");
+    conn->send_buffer.add(status);
+    conn->send_buffer.add("\r\n");
+    if(conn->keep_alive) {
+        conn->send_buffer.add("Connection: keep-alive\r\n");
+    }
+    return this;
+};
+
+HttpSender *HttpSender::header(const char *key, ISlice &value) {
+    if(conn == NULL) throw error::NotImplemented();
+
+    conn->send_buffer.add(key);
+    conn->send_buffer.add(": ");
+    conn->send_buffer.add(value);
+    conn->send_buffer.add("\r\n");
+    return this;
+};
+
+void HttpSender::done(ISlice &body) {
+    if(conn == NULL) throw error::NotImplemented();
+    if(conn->is_closed()) throw Exception("Trying to send to closed socket");
+
+    int body_size = body.size();
+    if(body_size == 0) {
+        conn->send_buffer.add("Content-Length: 0\r\n\r\n");
+    } else {
+        conn->send_buffer.add("Content-Length: ");
+        conn->send_buffer.add_number(body_size);
+        conn->send_buffer.add("\r\n\r\n");
+        conn->send_buffer.add(body);
+    }
+    conn->write_mode(true);
+};
+
+void HttpSender::done() {
+    if(conn == NULL) throw error::NotImplemented();
+    if(conn->is_closed()) throw Exception("Trying to send to closed socket");
+
+    conn->send_buffer.add("Content-Length: 0\r\n\r\n");
+    conn->write_mode(true);
+};
+
+void HttpSender::done(int error) {
+    if(conn == NULL) throw error::NotImplemented();
+    if(!conn->server->jsonrpc2) done();
+    else {
+        Slice msg;
+        if(error == -32700) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": null}");
+        else if(error == -32600) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}");
+        else if(error == -32601) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": null}");
+        else if(error == -32602) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32602, \"message\": \"Invalid params\"}, \"id\": null}");
+        else if(error == -1) msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32001, \"message\": \"Error, see http code\"}, \"id\": null}");
+        else if(error == 1) msg.set("{\"jsonrpc\": \"2.0\", \"result\": true, \"id\": null}");
+        else msg.set("{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32603, \"message\": \"Internal error\"}, \"id\": null}");
+        done(msg);
+    }
+};

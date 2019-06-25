@@ -3,23 +3,101 @@
 #define SERVER_H
 
 #include <vector>
+#include <map>
+#include <deque>
+#include <thread>
 #include "utils.h"
+//#include "connect.h"
 
+
+class Loop;
+class Connect;
+
+class CoreServer {
+private:
+    int _fd;
+    void _listen();
+    void _accept();
+    bool _valid_ip(u32 ip);
+public:
+    Slice host;
+    int log;
+    int port;
+    int threads;
+    bool jsonrpc2;
+    std::vector<NetFilter> net_filter;
+    Connect **connections;
+    Loop **loops;
+
+    CoreServer() {
+        log = 0;
+        port = 8001;
+        threads = 1;
+        jsonrpc2 = false;
+    };
+
+    void start();
+
+};
+
+
+class MethodLine {
+public:
+    long last_worker;
+    std::deque<Connect*> workers;
+    std::deque<Connect*> clients;
+};
+
+
+class Loop {
+private:
+    int epollfd;
+    std::thread _thread;
+
+    void _loop();
+    void _loop_safe();
+    void _close(int fd);
+public:
+    CoreServer *server;
+    std::vector<Connect*> dead_connections;
+
+    Loop(CoreServer *server);
+    void start();
+    void accept(Connect *conn);
+    void set_poll_mode(int fd, int status);
+
+// rpc
+private:
+    int _add_worker(Slice name, Connect *worker);
+public:
+    std::map<std::string, MethodLine*> methods;
+    std::map<std::string, Connect*> wait_response;
+    std::vector<NetFilter> net_filter;
+
+    void on_disconnect(Connect *conn);
+    void add_worker(ISlice name, Connect *worker);
+    int client_request(ISlice name, Connect *client);
+    int worker_result(ISlice id, Connect *worker);
+    int worker_result_noid(Connect *worker);
+};
+
+
+
+
+
+
+
+
+
+
+
+
+/////////////////
+
+/*
 class TcpServer;
 class IConnect;
 
-class HttpSender {
-private:
-    IConnect *conn;
-public:
-    HttpSender() {conn=NULL;};
-    void set_connect(IConnect *n_conn) {this->conn = n_conn;};
-    HttpSender *status(const char *status);
-    HttpSender *header(const char *key, ISlice &value);
-    void done(ISlice &body);
-    void done(int error);
-    void done();
-};
 
 class IConnect {
 private:
@@ -71,6 +149,9 @@ private:
     
     void _close(int fd);
 public:
+    std::thread _th1;
+    int _fn;
+
     int log;
     std::vector<IConnect*> dead_connections;
 
@@ -85,5 +166,7 @@ public:
     virtual IConnect* on_connect(int fd, uint32_t ip) {return new IConnect(fd, this);};
     virtual void on_disconnect(IConnect *conn) {};
 };
+
+ */
 
 #endif /* SERVER_H */

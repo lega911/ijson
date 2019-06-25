@@ -1,14 +1,14 @@
 
 #include <iostream>
-#include "rpc.h"
-#include "exception.h"
+#include "server.h"
 
 
 const char *help_info = "\n\
-    --host 127.0.0.1:8001\n\
+    --host <ip>[:port], default 127.0.0.1:8001\n\
     --filter 127.0.0.1/32\n\
     --log <option>\n\
     --jsonrpc2\n\
+    --threads <number>\n\
 \n\
     /rpc/add\n\
     /rpc/result\n\
@@ -30,9 +30,7 @@ int main(int argc, char** argv) {
         catch_fatal();
     #endif
 
-    int port = 8001;
-    Buffer host;
-    RpcServer server;
+    CoreServer server;
     server.log = 15;
 
     Slice s, next;
@@ -44,10 +42,10 @@ int main(int argc, char** argv) {
         if(s.equal("--host")) {
             if(next.valid()) {
                 Slice _h = next.split_left(':');
-                host.set(_h);
+                server.host.set(_h);
                 if(!next.empty()) {
                     try {
-                        port = next.atoi();
+                        server.port = next.atoi();
                     } catch(const Exception &e) {
                         std::cout << "Wrong host option\n";
                         return 1;
@@ -63,7 +61,7 @@ int main(int argc, char** argv) {
                 NetFilter nf(next);
                 server.net_filter.push_back(nf);
                 i++;
-                if(host.empty()) host.set("0.0.0.0");
+                if(server.host.empty()) server.host.set("0.0.0.0");
             } else {
                 std::cout << "Wrong port\n";
                 return 1;
@@ -87,16 +85,28 @@ int main(int argc, char** argv) {
             return 0;
         } else if(s.equal("--jsonrpc2")) {
             server.jsonrpc2 = true;
+        } else if(s.equal("--threads")) {
+            server.threads = -1;
+            if(next.valid()) {
+                try {
+                    server.threads = next.atoi();
+                } catch(const Exception &e) {}
+                i++;
+            };
+            if(server.threads < 0 || server.threads > 32) {
+                std::cout << "Wrong thread option\n";
+                return 1;
+            }
         } else {
             std::cout << "Wrong option (" << s.as_string() << ")\n\nuse --help\n";
             return 1;
         }
     }
-    if(host.empty()) host.set("127.0.0.1");
+    if(server.host.empty()) server.host.set("127.0.0.1");
 
     try {
-        server.start(host, port);
-    } catch (const exception &e) {
+        server.start();
+    } catch (const std::exception &e) {
         std::cout << ltime() << "Fatal exception: " << e.what() << std::endl;
     }
     return 1;
