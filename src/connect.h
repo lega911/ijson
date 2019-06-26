@@ -34,7 +34,7 @@ public:
 
 class Connect {
 private:
-    char _socket_status;  //  1 - read, 2 - write, -1 - closed
+    int _socket_status;  //  1 - read, 2 - write, -1 - closed
     int _link;
 public:
     int fd;
@@ -42,13 +42,24 @@ public:
     HttpSender send;
     Buffer send_buffer;
     Loop *loop;
+    int nloop;
+    int need_loop;
+    bool go_loop;
     CoreServer *server;
+
+    u64 counter;
+    u64 counter_ext;
 
     Connect(CoreServer *server, int fd) {
         _socket_status = 1;
         this->server = server;
         this->fd = fd;
         _link = 0;
+        counter = 0;
+        counter_ext = 0;
+        nloop = 0;
+        need_loop = 0;
+        go_loop = false;
         loop = server->loops[0];
         send.set_connect(this);
 
@@ -66,6 +77,7 @@ public:
 
     void close() {_socket_status = -1;};
     inline bool is_closed() {return _socket_status == -1;};
+    inline int get_socket_status() {return _socket_status;};
 
     int get_link() { return _link; }
     void link() { _link++; };

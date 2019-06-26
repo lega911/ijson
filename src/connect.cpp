@@ -208,7 +208,7 @@ void Connect::read_header(Slice &data) {
 void Connect::header_completed() {
     this->keep_alive = http_version == 11;
 
-    if(server->log & 16) {
+    if(server->log & 32) {
         Buffer repr(250);
         if(this->body.size() > 150) {
             repr.add(this->body.ptr(), 147);
@@ -245,6 +245,7 @@ void Connect::header_completed() {
             this->send.status("400 Result expected")->done(-1);
             return;
         };
+        counter++;
         int r = loop->worker_result_noid(this);
         if(r == 0) {
             this->send.status("200 OK")->done(1);
@@ -280,6 +281,7 @@ void Connect::header_completed() {
             if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
             this->send.status("400 No id")->done(-1);
         } else {
+            counter++;
             int r = loop->worker_result(id, this);
             if(r == 0) {
                 this->send.status("200 OK")->done(1);
