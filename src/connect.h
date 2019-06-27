@@ -60,6 +60,7 @@ public:
         nloop = 0;
         need_loop = 0;
         go_loop = false;
+        worker_mode = false;
         loop = server->loops[0];
         send.set_connect(this);
 
@@ -101,6 +102,7 @@ public:
     Buffer id;
     bool fail_on_disconnect;
     bool noid;
+    bool worker_mode;
     Connect *client;
     JData jdata;
 
@@ -109,6 +111,7 @@ public:
     void send_details();
     void send_help();
     void rpc_add();
+    void rpc_worker();
 
     void header_completed();
     void gen_id();

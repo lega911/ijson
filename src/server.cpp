@@ -489,8 +489,10 @@ int Loop::worker_result_noid(Connect *worker) {
     auto client = worker->client;
     if(!client) throw error::NotImplemented("No connected client for noid");
 
-    worker->noid = false;
-    worker->fail_on_disconnect = false;
+    if(!worker->worker_mode) {
+        worker->noid = false;
+        worker->fail_on_disconnect = false;
+    }
     worker->client = NULL;
     client->unlink();
 

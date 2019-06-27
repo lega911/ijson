@@ -14,7 +14,7 @@
 
 2) docker run -it --rm --network host --entrypoint sh lega911/ijson -c "taskset 0x1 /ijson --host 0.0.0.0"
 3) docker run -it --rm --network host -v `pwd`:/app py
-  $ taskset 0xfffc python3 worker.py &     # to start worker
+  $ taskset 0xfffc python3 worker2.py &     # to start worker
   $ taskset 0xfffc python3 client.py &     # to start client
 
 

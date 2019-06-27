@@ -136,10 +136,11 @@ void Connect::on_recv(char *buf, int size) {
         if(http_step == HTTP_START) {
             body.clear();
             id.clear();
-            name.clear();
+            if(!worker_mode) name.clear();
             this->jdata.reset();
             content_length = 0;
             if(status != STATUS_WAIT_RESULT) {
+                if(worker_mode) throw error::NotImplemented("Wrong status for worker");
                 fail_on_disconnect = false;
                 if(client) client->unlink();
                 client = NULL;
@@ -240,6 +241,18 @@ void Connect::header_completed() {
     }
     #endif
 
+    if(worker_mode) {
+        if(!this->path.equal("rpc/worker")) {
+            this->send.status("400 Worker expected")->done(-1);
+            return;
+        };
+
+        counter++;
+        loop->worker_result_noid(this);
+        rpc_add();
+        return;
+    }
+
     if(noid) {
         if(!this->path.equal("rpc/result")) {
             this->send.status("400 Result expected")->done(-1);
@@ -272,7 +285,11 @@ void Connect::header_completed() {
         method = this->path;
     };
 
-    if(method.equal("rpc/add")) {
+    if(method.equal("rpc/worker")) {
+        worker_mode = true;
+        rpc_add();
+        return;
+    } else if(method.equal("rpc/add")) {
         rpc_add();
         return;
     } else if(method.equal("rpc/result")) {
@@ -322,7 +339,12 @@ void Connect::header_completed() {
 void Connect::rpc_add() {
     Slice name(this->name);
     if(name.empty()) name = this->jdata.get_name();
-    if(this->id.equal("false")) {
+
+    if(worker_mode) {
+        if(this->name.empty()) this->name.set(name);
+        this->noid = true;
+        this->fail_on_disconnect = true;
+    } else if(this->id.equal("false")) {
         this->noid = true;
         this->fail_on_disconnect = true;
     } else {
@@ -331,6 +353,7 @@ void Connect::rpc_add() {
     }
 
     if(name.empty()) {
+        worker_mode = false;
         this->send.status("400 No name")->done(-32602);
     } else {
         loop->add_worker(name, this);
