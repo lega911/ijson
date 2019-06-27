@@ -4,7 +4,7 @@
 
 
 const char *help_info = "\n\
-    --host <ip>[:port], default 127.0.0.1:8001\n\
+    --host [ip][:port], default 127.0.0.1:8001\n\
     --filter 127.0.0.1/32\n\
     --log <option>\n\
     --jsonrpc2\n\
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
         if(s.equal("--host")) {
             if(next.valid()) {
                 Slice _h = next.split_left(':');
-                server.host.set(_h);
+                if(!_h.empty()) server.host.set(_h);
                 if(!next.empty()) {
                     try {
                         server.port = next.atoi();
@@ -104,7 +104,14 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
-    if(server.host.empty()) server.host.set("127.0.0.1");
+
+    if(server.host.empty()) {
+        #ifdef DOCKER
+            server.host.set("0.0.0.0");
+        #else
+            server.host.set("127.0.0.1");
+        #endif
+    }
 
     try {
         server.start();
