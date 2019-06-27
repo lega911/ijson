@@ -1,4 +1,5 @@
 FROM debian:stretch-slim
+COPY start.sh /start.sh
 COPY ijson /ijson
 COPY ijson.debug /ijson.debug
-ENTRYPOINT ["/ijson"]
+ENTRYPOINT ["/start.sh"]
