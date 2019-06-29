@@ -348,7 +348,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         client = ml->clients.front();
         ml->clients.pop_front();
         client->unlink();
-        if(client->is_closed() || client->status != STATUS_WAIT_RESPONSE) {
+        if(client->is_closed() || client->status != STATUS_WAIT_RESPONSE || client->nloop != _nloop) {
             // TODO: close wrong connection?
             if(server->log & 8) std::cout << ltime() << "dead client\n";
             client = NULL;
@@ -423,7 +423,7 @@ int Loop::client_request(ISlice name, Connect *client) {
         worker = ml->workers.front();
         ml->workers.pop_front();
         worker->unlink();
-        if(worker->is_closed() || worker->status != STATUS_WAIT_JOB) {
+        if(worker->is_closed() || worker->status != STATUS_WAIT_JOB || worker->nloop != _nloop) {
             // TODO: close wrong connection?
             if(server->log & 8) std::cout << ltime() << "dead worker\n";
             worker = NULL;
