@@ -58,3 +58,14 @@
   $ taskset 0xfffc python3 /app/async/app.py 5002 &
   $ taskset 0xfffc python3 /app/async/app.py 5003 &
   $ taskset 0xfffc python3 client.py 8005 &
+
+
+# Traefik
+
+2) docker run -it --network host -v `pwd`/traefik.toml:/etc/traefik/traefik.toml traefik
+3) docker run -it --rm -v `pwd`:/app --network host py
+  $ taskset 0xfffc python3 /app/async/app.py 5000 &
+  $ taskset 0xfffc python3 /app/async/app.py 5001 &
+  $ taskset 0xfffc python3 /app/async/app.py 5002 &
+  $ taskset 0xfffc python3 /app/async/app.py 5003 &
+  $ taskset 0xfffc python3 client.py 8005 &
