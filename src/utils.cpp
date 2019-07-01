@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <sys/time.h>
 #include <ctime>
+#include "server.h"
 
 
 long get_time() {
@@ -46,3 +47,22 @@ const char *ltime() {
 
     return lbuf.ptr();
 }
+
+
+/* Lock  */
+
+void Lock::lock(int n) {
+    u64 v = 1 << n;
+    if(mask & v) return;
+    mask |= v;
+    server->loops[n]->del_lock.lock();
+}
+
+void Lock::unlock() {
+    u64 v = 1;
+    for(int i=0;i<server->threads;i++) {
+        if(v & mask) server->loops[i]->del_lock.unlock();
+        v <<= 1;
+    }
+    mask = 0;
+};

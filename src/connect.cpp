@@ -230,7 +230,16 @@ void Connect::header_completed() {
         return;
     }
 
+
     #ifdef DEBUG
+    if(this->path.equal("rpc/migrate")) {
+        this->send.status("200 OK")->done();
+        this->need_loop = this->nloop + 1;
+        if(this->need_loop >= server->threads) this->need_loop = 0;
+        this->go_loop = true;
+        return;
+    }
+
     if(this->path.equal("debug")) {
         Buffer r(32);
         r.add("Memory allocated: ");
@@ -320,20 +329,7 @@ void Connect::header_completed() {
         return;
     }
 
-    int r = loop->client_request(method, this);
-    if(r == 0) {
-        status = STATUS_WAIT_RESPONSE;
-    } else if(r == -1) {
-        if(server->log & 4) std::cout << ltime() << "404 no method " << method.as_string() << std::endl;
-        this->send.status("404 Not Found")->done(-32601);
-    // } else if(r == -2) {
-    //    this->send("400 No Id");
-    } else if(r == -3) {
-        if(server->log & 4) std::cout << ltime() << "400 collision id " << method.as_string() << std::endl;
-        this->send.status("400 Collision Id")->done(-1);
-    } else {
-        throw error::NotImplemented();
-    }
+    loop->client_request(method, this);
 }
 
 void Connect::rpc_add() {

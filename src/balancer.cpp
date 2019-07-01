@@ -10,7 +10,7 @@ void Balancer::start() {
 }
 
 void Balancer::_start() {
-    int i, total;
+    int i, total, count_workers;
     int threads = server->threads;
     int *counts = (int*)_malloc(threads * sizeof(int));
 
@@ -18,25 +18,23 @@ void Balancer::_start() {
         usleep(500000);  // 500ms
 
         total = 0;
-        for(i=0;i<threads;i++) {
-            server->loops[i]->del_lock.lock();
-            counts[i] = 0;
-        }
+        count_workers = 0;
+        memset(counts, 0, threads * sizeof(int));
 
-        int count_workers = 0;
-        for(i=0;i<=server->max_fd;i++) {
-            Connect *conn = server->connections[i];
-            if(!conn) continue;
-            u64 counter = conn->counter;
-            int diff = (int)(counter - conn->counter_ext);
-            if(!diff) continue;
-            conn->counter_ext = counter;
-            counts[conn->nloop] += diff;
-            total += diff;
-            count_workers++;
+        {
+            auto lock = server->autolock();
+            for(i=0;i<=server->max_fd;i++) {
+                Connect *conn = server->connections[i];
+                if(!conn) continue;
+                u64 counter = conn->counter;
+                int diff = (int)(counter - conn->counter_ext);
+                if(!diff) continue;
+                conn->counter_ext = counter;
+                counts[conn->nloop] += diff;
+                total += diff;
+                count_workers++;
+            }
         }
-
-        for(i=0;i<threads;i++) server->loops[i]->del_lock.unlock();
 
         int hi = 0;
         int low = 0;
@@ -54,18 +52,21 @@ void Balancer::_start() {
         int to_migrate = (counts[hi] - counts[low]) * count_workers / total / 2;
         if(!to_migrate) continue;
 
-        server->loops[hi]->del_lock.lock();
-        int j=0;
-        for(i=0;i<to_migrate;i++) {
-            for(;j<=server->max_fd;j++) {
-                Connect *conn = server->connections[j];
-                if(!conn) continue;
-                if(conn->nloop != hi) continue;
-                if(!conn->counter) continue;
-                conn->need_loop = low;
-                break;
+        {
+            Lock lock(server);
+            lock.lock(hi);
+
+            int j=0;
+            for(i=0;i<to_migrate;i++) {
+                for(;j<=server->max_fd;j++) {
+                    Connect *conn = server->connections[j];
+                    if(!conn) continue;
+                    if(conn->nloop != hi) continue;
+                    if(!conn->counter) continue;
+                    conn->need_loop = low;
+                    break;
+                }
             }
         }
-        server->loops[hi]->del_lock.unlock();
     };
 };

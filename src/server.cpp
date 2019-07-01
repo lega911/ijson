@@ -115,6 +115,10 @@ void CoreServer::start() {
     _listen();
 
     if(threads < 1) threads = 1;
+    if(threads > 62) {
+        threads = 62;
+        if(log & 4) std::cout << "max threads is 62\n";
+    }
     loops = (Loop**)_malloc(sizeof(Loop*) * threads);
 
     for(int i=0; i<threads; i++) {
@@ -130,9 +134,19 @@ void CoreServer::start() {
 };
 
 
+Lock CoreServer::autolock(int except) {
+    Lock lock(this);
+    for(int i=0;i<threads;i++) {
+        if(i != except) lock.lock(i);
+    }
+    return lock;
+}
+
+
 /* Loop */
 
 Loop::Loop(CoreServer *server, int nloop) {
+    accept_request = false;
     this->server = server;
     _nloop = nloop;
 };
@@ -149,13 +163,28 @@ void Loop::accept(Connect *conn) {
 
     conn->nloop = conn->need_loop = _nloop;
     conn->loop = this;
-    conn->go_loop = false;
 
     int st = conn->get_socket_status();
     if(st == -1) throw Exception("accept: connection is closed");
     if(st & 1) event.events |= EPOLLIN;
     if(st & 2) event.events |= EPOLLOUT;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn->fd, &event) < 0) {
+        throw Exception("epoll_ctl EPOLL_CTL_ADD");
+    }
+}
+
+
+void Loop::wake() {
+    if(!server->fake_fd) {
+        server->lock.lock();
+        if(!server->fake_fd) server->fake_fd = socket(AF_INET, SOCK_STREAM, 0);
+        server->lock.unlock();
+        if(server->fake_fd < 0) throw Exception("Error opening socket");
+    }
+
+    eitem event = {0};
+    event.data.fd = server->fake_fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, server->fake_fd, &event) < 0) {
         throw Exception("epoll_ctl EPOLL_CTL_ADD");
     }
 }
@@ -190,8 +219,13 @@ void Loop::_loop() {
         bool need_to_migrate = false;
         for (int i = 0; i < nready; i++) {
             int fd = events[i].data.fd;
-            if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP) {
-                std::cout << "epoll_wait returned EPOLLERR/EPOLLHUP (" << events[i].events << "): " << fd << std::endl;
+            if(fd == server->fake_fd) {
+                set_poll_mode(fd, -1);
+                continue;
+            }
+
+            if(events[i].events & EPOLLERR || events[i].events & EPOLLHUP) {
+                if(server->log & 2) std::cout << "epoll_wait returned EPOLLERR/EPOLLHUP (" << events[i].events << "): " << fd << std::endl;
                 //IConnect* conn = this->connections[fd];
                 //conn->on_error();
                 _close(fd);
@@ -242,6 +276,8 @@ void Loop::_loop() {
         }
 
         if(need_to_migrate) {
+            Lock lock = server->autolock(_nloop);
+
             for (int i = 0; i <= server->max_fd; i++) {
                 Connect* conn = server->connections[i];
                 if(!conn) continue;
@@ -250,7 +286,14 @@ void Loop::_loop() {
                 conn->go_loop = false;
                 if(conn->is_closed()) continue;
                 set_poll_mode(conn->fd, -1);
-                server->loops[conn->need_loop]->accept(conn);
+                if(server->log & 64) std::cout << "balancer: migrate client request " << _nloop << " -> " << conn->need_loop << std::endl;
+                auto loop = server->loops[conn->need_loop];
+                loop->accept(conn);
+
+                if(conn->status == STATUS_MIGRATE_REQUEST) {
+                    loop->wake();
+                    loop->accept_request = true;
+                }
             }
         }
 
@@ -265,6 +308,19 @@ void Loop::_loop() {
                 }
                 dead_connections.clear();
                 del_lock.unlock();
+            }
+        }
+
+        if(accept_request) {
+            Lock lock = server->autolock(_nloop);
+            accept_request = false;
+            for (int i = 0; i <= server->max_fd; i++) {
+                Connect* conn = server->connections[i];
+                if(!conn || conn->nloop != _nloop) continue;
+                if(conn->status != STATUS_MIGRATE_REQUEST) continue;
+                if(conn->is_closed()) continue;
+
+                client_request(conn->name, conn);
             }
         }
     }
@@ -414,8 +470,13 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 };
 
 int Loop::client_request(ISlice name, Connect *client) {
-    auto it = this->methods.find(name.as_string());
-    if (it == this->methods.end()) return -1;
+    auto key = name.as_string();
+    auto it = this->methods.find(key);
+    if (it == this->methods.end()) {
+        if(server->log & 4) std::cout << ltime() << "404 no method " << key << std::endl;
+        client->send.status("404 Not Found")->done(-32601);
+        return -1;
+    }
     MethodLine *ml = it->second;
 
     Connect *worker = NULL;
@@ -451,6 +512,8 @@ int Loop::client_request(ISlice name, Connect *client) {
             if(wait_response[sid] != NULL) {
                 ml->workers.push_front(worker);
                 worker->link();
+                if(server->log & 4) std::cout << ltime() << "400 collision id " << key << std::endl;
+                client->send.status("400 Collision Id")->done(-1);
                 return -3;
             }
             if(worker->fail_on_disconnect) {
@@ -463,9 +526,32 @@ int Loop::client_request(ISlice name, Connect *client) {
             worker->status = STATUS_NET;
         }
     } else {
+        if(server->threads > 1) {
+            int move_to = _nloop;
+            for(int i=0;i<server->threads;i++) {
+                if(i == _nloop) continue;
+                Loop *l = server->loops[i];
+
+                l->del_lock.lock();
+                MethodLine *ml = l->methods[key];
+                if(ml->workers.size()) move_to = i;
+                l->del_lock.unlock();
+                if(move_to != _nloop) break;
+            }
+
+            if(move_to != _nloop) {
+                client->name.set(name);
+                client->need_loop = move_to;
+                client->go_loop = true;
+                client->status = STATUS_MIGRATE_REQUEST;
+                return 7;
+            }
+        }
+
         ml->clients.push_back(client);
         client->link();
     }
+    client->status = STATUS_WAIT_RESPONSE;
     return 0;
 };
 

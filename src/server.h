@@ -27,6 +27,7 @@ public:
     int port;
     int threads;
     bool jsonrpc2;
+    int fake_fd;
     std::vector<NetFilter> net_filter;
     Connect **connections;
     Loop **loops;
@@ -38,10 +39,13 @@ public:
         threads = 1;
         jsonrpc2 = false;
         max_fd = 0;
+        fake_fd = 0;
     };
 
     void start();
     void make_queue(std::string name);
+
+    Lock autolock(int except=-1);
 };
 
 
@@ -63,6 +67,7 @@ private:
     void _loop_safe();
     void _close(int fd);
 public:
+    bool accept_request;
     CoreServer *server;
     std::vector<Connect*> dead_connections;
     std::mutex del_lock;
@@ -71,6 +76,7 @@ public:
     void start();
     void accept(Connect *conn);
     void set_poll_mode(int fd, int status);
+    void wake();
 
 // rpc
 private:

@@ -19,5 +19,20 @@ long get_time();
 long get_time_sec();
 const char *ltime();
 
+
+class CoreServer;
+
+class Lock {
+private:
+    CoreServer *server;
+    u64 mask;
+public:
+    Lock(CoreServer *server) : server(server), mask(0) {};
+    ~Lock() {unlock();};
+
+    void lock(int n);
+    void unlock();
+};
+
 #endif /* UTILS_H */
 

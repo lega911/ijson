@@ -16,6 +16,7 @@
 #define STATUS_WAIT_JOB 22
 #define STATUS_WAIT_RESPONSE 23
 #define STATUS_WAIT_RESULT 24
+#define STATUS_MIGRATE_REQUEST 30
 
 
 class HttpSender {
@@ -95,8 +96,8 @@ private:
     Buffer buffer;
 
     Buffer path;
-    Buffer name;
 public:
+    Buffer name;
     int status;
     Buffer body;
     Buffer id;
