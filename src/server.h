@@ -14,7 +14,7 @@ class Loop;
 class Connect;
 
 
-class CoreServer {
+class Server {
 private:
     int _fd;
     void _listen();
@@ -33,7 +33,7 @@ public:
     Loop **loops;
     std::mutex lock;
 
-    CoreServer() {
+    Server() {
         log = 0;
         port = 8001;
         threads = 1;
@@ -68,11 +68,11 @@ private:
     void _close(int fd);
 public:
     bool accept_request;
-    CoreServer *server;
+    Server *server;
     std::vector<Connect*> dead_connections;
     std::mutex del_lock;
 
-    Loop(CoreServer *server, int nloop);
+    Loop(Server *server, int nloop);
     void start();
     void accept(Connect *conn);
     void set_poll_mode(int fd, int status);

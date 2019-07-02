@@ -34,7 +34,7 @@ void unblock_socket(int fd) {
 }
 
 
-void CoreServer::_listen() {
+void Server::_listen() {
     _fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_fd < 0) {
         throw Exception("Error opening socket");
@@ -61,7 +61,7 @@ void CoreServer::_listen() {
 };
 
 
-bool CoreServer::_valid_ip(u32 ip) {
+bool Server::_valid_ip(u32 ip) {
     if(!net_filter.size()) return true;
 
     for(int i=0;i<net_filter.size();i++) {
@@ -73,7 +73,7 @@ bool CoreServer::_valid_ip(u32 ip) {
 }
 
 
-void CoreServer::_accept() {
+void Server::_accept() {
     connections = (Connect**)_malloc(sizeof(Connect*) * MAX_EVENTS);
     if(connections == NULL) throw error::NoMemory();
     memset(connections, MAX_EVENTS, sizeof(Connect*));
@@ -111,7 +111,7 @@ void CoreServer::_accept() {
 
 };
 
-void CoreServer::start() {
+void Server::start() {
     _listen();
 
     if(threads < 1) threads = 1;
@@ -134,7 +134,7 @@ void CoreServer::start() {
 };
 
 
-Lock CoreServer::autolock(int except) {
+Lock Server::autolock(int except) {
     Lock lock(this);
     for(int i=0;i<threads;i++) {
         if(i != except) lock.lock(i);
@@ -145,7 +145,7 @@ Lock CoreServer::autolock(int except) {
 
 /* Loop */
 
-Loop::Loop(CoreServer *server, int nloop) {
+Loop::Loop(Server *server, int nloop) {
     accept_request = false;
     this->server = server;
     _nloop = nloop;
@@ -379,7 +379,7 @@ void Loop::add_worker(ISlice name, Connect *worker) {
     }
 }
 
-void CoreServer::make_queue(std::string name) {
+void Server::make_queue(std::string name) {
     lock.lock();
     for(int i=0;i<threads;i++) {
         MethodLine *ml = loops[i]->methods[name];

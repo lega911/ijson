@@ -5,16 +5,16 @@
 #include <thread>
 #include "utils.h"
 
-class CoreServer;
+class Server;
 
 
 class Balancer {
 private:
     std::thread _thread;
-    CoreServer *server;
+    Server *server;
     void _start();
 public:
-    Balancer(CoreServer *server) : server(server) {};
+    Balancer(Server *server) : server(server) {};
     void start();
 };
 

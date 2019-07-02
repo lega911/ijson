@@ -46,12 +46,12 @@ public:
     int nloop;
     int need_loop;
     bool go_loop;
-    CoreServer *server;
+    Server *server;
 
     u64 counter;
     u64 counter_ext;
 
-    Connect(CoreServer *server, int fd) {
+    Connect(Server *server, int fd) {
         _socket_status = 1;
         this->server = server;
         this->fd = fd;

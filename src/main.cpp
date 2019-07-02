@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
         catch_fatal();
     #endif
 
-    CoreServer server;
+    Server server;
     server.log = 15;
 
     Slice s, next;
