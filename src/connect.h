@@ -14,22 +14,30 @@
 
 #define STATUS_NET 21
 #define STATUS_WAIT_JOB 22
-#define STATUS_WAIT_RESPONSE 23
+
 #define STATUS_WAIT_RESULT 24
 #define STATUS_MIGRATE_REQUEST 30
+
+#define CLIENT_WAIT_RESULT 23
+#define CONNECT_BUSY 41
 
 
 class HttpSender {
 private:
     Connect *conn;
+    bool _autosend;
 public:
-    HttpSender() {conn=NULL;};
+    HttpSender() : conn(NULL), _autosend(true) {};
     void set_connect(Connect *n_conn) {this->conn = n_conn;};
     HttpSender *status(const char *status);
     HttpSender *header(const char *key, ISlice &value);
     void done(ISlice &body);
     void done(int error);
     void done();
+    HttpSender *autosend(bool active=true) {
+        _autosend = active;
+        return this;
+    };
 };
 
 
@@ -47,6 +55,7 @@ public:
     int need_loop;
     bool go_loop;
     Server *server;
+    std::mutex mutex;
 
     u64 counter;
     u64 counter_ext;

@@ -14,6 +14,15 @@ class Loop;
 class Connect;
 
 
+class Queue {
+public:
+    long last_worker;
+    std::mutex mutex;
+    std::deque<Connect*> workers;
+    std::deque<Connect*> clients;
+};
+
+
 class Server {
 private:
     int _fd;
@@ -31,7 +40,7 @@ public:
     std::vector<NetFilter> net_filter;
     Connect **connections;
     Loop **loops;
-    std::mutex lock;
+    std::mutex global_lock;
 
     Server() {
         log = 0;
@@ -43,17 +52,11 @@ public:
     };
 
     void start();
-    void make_queue(std::string name);
-
     Lock autolock(int except=-1);
-};
 
-
-class MethodLine {
-public:
-    long last_worker;
-    std::deque<Connect*> workers;
-    std::deque<Connect*> clients;
+    std::map<std::string, Queue*> _queue;
+    std::map<std::string, Connect*> wait_response;
+    Queue *get_queue(std::string &key, bool create=false);
 };
 
 
@@ -82,10 +85,6 @@ public:
 private:
     int _add_worker(Slice name, Connect *worker);
 public:
-    std::map<std::string, MethodLine*> methods;
-    std::map<std::string, Connect*> wait_response;
-    std::vector<NetFilter> net_filter;
-
     void on_disconnect(Connect *conn);
     void add_worker(ISlice name, Connect *worker);
     int client_request(ISlice name, Connect *client);

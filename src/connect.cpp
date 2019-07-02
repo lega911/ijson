@@ -58,6 +58,7 @@ void Connect::on_send() {
 void Connect::on_recv(char *buf, int size) {
     if(!(status == STATUS_NET || (status == STATUS_WAIT_RESULT && noid))) {
         if(server->log & 4) std::cout << "warning: data is come, but connection is not ready\n";
+        std::cout << "connect " << this << ", status " << status << ", loop " << nloop << "\n";
         buffer.add(buf, size);
         return;
     }
@@ -256,7 +257,7 @@ void Connect::header_completed() {
             return;
         };
 
-        counter++;
+        //counter++;
         loop->worker_result_noid(this);
         if(go_loop) {
             // TODO move worker
@@ -269,7 +270,7 @@ void Connect::header_completed() {
             this->send.status("400 Result expected")->done(-1);
             return;
         };
-        counter++;
+        //counter++;
         int r = loop->worker_result_noid(this);
         if(r == 0) {
             this->send.status("200 OK")->done(1);
@@ -309,7 +310,7 @@ void Connect::header_completed() {
             if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
             this->send.status("400 No id")->done(-1);
         } else {
-            counter++;
+            //counter++;
             int r = loop->worker_result(id, this);
             if(r == 0) {
                 this->send.status("200 OK")->done(1);
@@ -369,17 +370,18 @@ void Connect::gen_id() {
 void Connect::send_details() {
     Buffer res(256);
     res.add("{");
-    for(const auto &it : loop->methods) {
+    LOCK _l(server->global_lock);
+    for(const auto &it : server->_queue) {
         std::string name = it.first;
-        MethodLine *ml = it.second;
+        Queue *q = it.second;
         res.add("\"");
         res.add(name);
         res.add("\":{\"last_worker\":");
-        res.add_number(ml->last_worker);
+        res.add_number(q->last_worker);
         res.add(",\"workers\":");
-        res.add_number(ml->workers.size());
+        res.add_number(q->workers.size());
         res.add(",\"clients\":");
-        res.add_number(ml->clients.size());
+        res.add_number(q->clients.size());
         res.add("},\n");
     };
     if(res.size() > 2) res.resize(0, res.size() - 2);
@@ -392,12 +394,13 @@ void Connect::send_help() {
     res.add("ijson ");
     res.add(ijson_version);
     res.add("\n\nrpc/add\nrpc/result\nrpc/details\nrpc/help\n\n");
-    for(const auto &it : loop->methods) {
+    LOCK _l(server->global_lock);
+    for(const auto &it : server->_queue) {
         std::string name = it.first;
-        MethodLine *ml = it.second;
+        Queue *q = it.second;
         res.add(name);
         res.add("  x ");
-        res.add_number(ml->workers.size());
+        res.add_number(q->workers.size());
         res.add("\n");
     }
     send.status("200 OK")->done(res);
@@ -442,7 +445,8 @@ void HttpSender::done(ISlice &body) {
         conn->send_buffer.add("\r\n\r\n");
         conn->send_buffer.add(body);
     }
-    conn->write_mode(true);
+    if(_autosend) conn->write_mode(true);
+    else _autosend = true;
 };
 
 void HttpSender::done() {
@@ -450,7 +454,8 @@ void HttpSender::done() {
     if(conn->is_closed()) throw Exception("Trying to send to closed socket");
 
     conn->send_buffer.add("Content-Length: 0\r\n\r\n");
-    conn->write_mode(true);
+    if(_autosend) conn->write_mode(true);
+    else _autosend = true;
 };
 
 void HttpSender::done(int error) {

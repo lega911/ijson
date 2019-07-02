@@ -2,7 +2,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-static const char *ijson_version = "0.3.1";
+static const char *ijson_version = "0.3.2";
 
 #include <stdlib.h>
 #include <string.h>
@@ -15,10 +15,11 @@ static const char *ijson_version = "0.3.1";
 #include "buffer.h"
 #include "netfilter.h"
 
+#define LOCK std::lock_guard<std::mutex>
+
 long get_time();
 long get_time_sec();
 const char *ltime();
-
 
 class Server;
 

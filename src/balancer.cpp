@@ -23,6 +23,7 @@ void Balancer::_start() {
 
         {
             auto lock = server->autolock();
+            std::cout << "B:";
             for(i=0;i<=server->max_fd;i++) {
                 Connect *conn = server->connections[i];
                 if(!conn) continue;
@@ -33,8 +34,12 @@ void Balancer::_start() {
                 counts[conn->nloop] += diff;
                 total += diff;
                 count_workers++;
+                std::cout << " (" << conn->nloop << ":" << conn->fd << ": " << diff << ")";
             }
+            std::cout << std::endl;
         }
+
+        continue;
 
         int hi = 0;
         int low = 0;

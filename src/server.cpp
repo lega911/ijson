@@ -78,6 +78,7 @@ void Server::_accept() {
     if(connections == NULL) throw error::NoMemory();
     memset(connections, MAX_EVENTS, sizeof(Connect*));
 
+    int balance = 0;
     while (true) {
         struct sockaddr_in peer_addr;
         socklen_t peer_addr_len = sizeof(peer_addr);
@@ -106,9 +107,10 @@ void Server::_accept() {
         if(fd > max_fd) max_fd = fd;
         if(log & 16) std::cout << ltime() << "connect " << fd << " " << (void*)conn << std::endl;
 
-        loops[0]->accept(conn);
+        loops[balance]->accept(conn);
+        balance++;
+        if(balance >= threads) balance = 0;
     }
-
 };
 
 void Server::start() {
@@ -140,6 +142,23 @@ Lock Server::autolock(int except) {
         if(i != except) lock.lock(i);
     }
     return lock;
+}
+
+
+Queue *Server::get_queue(std::string &key, bool create) {
+    auto it = _queue.find(key);
+    if(it != _queue.end()) return it->second;
+    if(!create) return NULL;
+
+    Queue *q;
+    LOCK _l(global_lock);
+    it = _queue.find(key);
+    if(it != _queue.end()) q = it->second;
+    else {
+        q = new Queue();
+        _queue[key] = q;
+    }
+    return q;
 }
 
 
@@ -176,9 +195,8 @@ void Loop::accept(Connect *conn) {
 
 void Loop::wake() {
     if(!server->fake_fd) {
-        server->lock.lock();
+        LOCK _l(server->global_lock);
         if(!server->fake_fd) server->fake_fd = socket(AF_INET, SOCK_STREAM, 0);
-        server->lock.unlock();
         if(server->fake_fd < 0) throw Exception("Error opening socket");
     }
 
@@ -255,10 +273,7 @@ void Loop::_loop() {
                         if(server->log & 2) std::cout << ltime() << "Exception on_recv: " << e.what() << std::endl;
                         conn->close();
                     }
-                    if(conn->is_closed()) {
-                        _close(fd);
-                        continue;
-                    }
+                    if(conn->is_closed()) _close(fd);
                 }
             } else if (events[i].events & EPOLLOUT) {
                 try {
@@ -267,11 +282,9 @@ void Loop::_loop() {
                     if(server->log & 2) std::cout << ltime() << "Exception on_send: " << e.what() << std::endl;
                     conn->close();
                 }
-                if(conn->is_closed()) {
-                    _close(fd);
-                    continue;
-                }
+                if(conn->is_closed()) _close(fd);
             }
+
             if(conn->go_loop) need_to_migrate = true;
         }
 
@@ -359,6 +372,7 @@ void Loop::_close(int fd) {
 }
 
 void Loop::add_worker(ISlice name, Connect *worker) {
+    worker->counter++;
     char *ptr = name.ptr();
     int start = 0;
     int i = 0;
@@ -379,37 +393,45 @@ void Loop::add_worker(ISlice name, Connect *worker) {
     }
 }
 
-void Server::make_queue(std::string name) {
-    lock.lock();
-    for(int i=0;i<threads;i++) {
-        MethodLine *ml = loops[i]->methods[name];
-        if(ml) continue;
-        loops[i]->methods[name] = new MethodLine();
-    }
-    lock.unlock();
-};
-
 int Loop::_add_worker(Slice name, Connect *worker) {
     if(!name.empty() && name.ptr()[0] == '/') name.remove(1);
     std::string key = name.as_string();
-    MethodLine *ml = this->methods[key];
-    if(ml == NULL) {
-        server->make_queue(key);
-        ml = this->methods[key];
-    }
-    ml->last_worker = get_time_sec();
+
+    Queue *q = server->get_queue(key, true);
+
+    //std::cout << "lock: add_worker\n";  // DEBUG
+
     Connect *client = NULL;
+    int result;
+    {
+    LOCK _lock(q->mutex);
+    q->last_worker = get_time_sec();
     std::string sid;
-    while(ml->clients.size()) {
-        client = ml->clients.front();
-        ml->clients.pop_front();
+    while(q->clients.size()) {
+        client = q->clients.front();
+        q->clients.pop_front();
         client->unlink();
-        if(client->is_closed() || client->status != STATUS_WAIT_RESPONSE || client->nloop != _nloop) {
-            // TODO: close wrong connection?
-            if(server->log & 8) std::cout << ltime() << "dead client\n";
+
+        if(client->is_closed()) {
+            if(server->log & 8) std::cout << ltime() << "closed client " << client << std::endl;;
             client = NULL;
             continue;
         }
+        if(client->status != CLIENT_WAIT_RESULT) {
+            if(server->log & 8) std::cout << ltime() << "client is busy!!! " << client << std::endl;;
+            client = NULL;
+            continue;
+        }
+
+        LOCK _lc(client->mutex);
+        if(client->status != CLIENT_WAIT_RESULT) {
+            if(server->log & 8) std::cout << ltime() << "client is busy!!! " << client << std::endl;;
+            client = NULL;
+            continue;
+        }
+        //std::cout << "client: busy\n";  // DEBUG
+        client->status = CONNECT_BUSY;
+
         if(worker->noid) break;
         Slice id = client->id;
         if(id.empty()) {
@@ -422,10 +444,10 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             }
         }
         sid = id.as_string();
-        if(wait_response[sid] != NULL) {
+        if(server->wait_response[sid] != NULL) {
             // colision id
             if(server->log & 2) std::cout << ltime() << "collision id\n";
-            client->send.status("400 Collision Id")->done(-1);
+            client->send.status("400 Collision Id")->done(-1);  // FIXME
             client->status = STATUS_NET;
             client = NULL;
             continue;
@@ -434,27 +456,30 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     }
 
     if(client) {
+        //std::cout << "client foundi in queue\n";  // DEBUG
         if(worker->fail_on_disconnect) {
             worker->client = client;
             worker->client->link();
         }
         if(worker->noid) {
-            worker->send.status("200 OK")->header("Method", name)->done(client->body);
             worker->status = STATUS_WAIT_RESULT;
+            worker->send.status("200 OK")->header("Method", name)->autosend(false)->done(client->body);
         } else {
-            worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->done(client->body);
-            wait_response[sid] = client;
+            worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->autosend(false)->done(client->body);
+            server->wait_response[sid] = client;
             client->link();
             worker->status = STATUS_NET;
         }
-        return 1;
+        //std::cout << "unlock: add_worker\n";  // DEBUG
+        result = 1;
     } else {
-        if (ml->workers.size()) {
-            auto it=ml->workers.begin();
-            while (it != ml->workers.end()) {
+        //std::cout << "no client in queue\n";  // DEBUG
+        if (q->workers.size()) {
+            auto it=q->workers.begin();
+            while (it != q->workers.end()) {
                 Connect *conn = *it;
                 if(conn->is_closed() || conn == worker) {
-                    it = ml->workers.erase(it);
+                    it = q->workers.erase(it);
                     conn->unlink();
                 } else {
                     it++;
@@ -462,42 +487,75 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             }
         }
 
-        ml->workers.push_back(worker);
+        q->workers.push_back(worker);
         worker->link();
         worker->status = STATUS_WAIT_JOB;
-        return 0;
+        //std::cout << "unlock: add_worker\n";  // DEBUG
+        result = 0;
     }
+
+    }
+
+
+    if(client && client->send_buffer.size()) {
+        client->write_mode(true);
+    }
+    if(worker->send_buffer.size()) {
+        worker->write_mode(true);
+    }
+    return result;
 };
 
 int Loop::client_request(ISlice name, Connect *client) {
+    client->counter++;
     auto key = name.as_string();
-    auto it = this->methods.find(key);
-    if (it == this->methods.end()) {
+    auto q = server->get_queue(key);
+    if(!q) {
         if(server->log & 4) std::cout << ltime() << "404 no method " << key << std::endl;
         client->send.status("404 Not Found")->done(-32601);
         return -1;
     }
-    MethodLine *ml = it->second;
+
 
     Connect *worker = NULL;
-    while (ml->workers.size()) {
-        worker = ml->workers.front();
-        ml->workers.pop_front();
+    {
+    LOCK queue_lock(q->mutex);
+    
+    //std::cout << "lock: clietn_request\n";  // DEBUG
+    while (q->workers.size()) {
+        worker = q->workers.front();
+        q->workers.pop_front();
         worker->unlink();
-        if(worker->is_closed() || worker->status != STATUS_WAIT_JOB || worker->nloop != _nloop) {
-            // TODO: close wrong connection?
-            if(server->log & 8) std::cout << ltime() << "dead worker " << worker << std::endl;
+
+        if(worker->is_closed()) {
+            if(server->log & 8) std::cout << ltime() << "worker closed " << worker << std::endl;
             worker = NULL;
             continue;
         }
+        if(worker->status != STATUS_WAIT_JOB) {
+            std::cout << "worker is not ready " << worker << std::endl;
+            worker = NULL;
+            continue;
+        }
+
+        LOCK _lw(worker->mutex);
+        if(worker->status != STATUS_WAIT_JOB) {
+            std::cout << "worker is not ready " << worker << std::endl;
+            worker = NULL;
+            continue;
+        }
+        worker->status = CONNECT_BUSY;
         break;
     };
     if(worker) {
+        //std::cout << "worker found\n";  // DEBUG
         if(worker->noid) {
             worker->client = client;
             client->link();
-            worker->send.status("200 OK")->header("Method", name)->done(client->body);
+            //if(worker->nloop != _nloop) LOCK _lw(worker->mutex);
+
             worker->status = STATUS_WAIT_RESULT;
+            worker->send.status("200 OK")->header("Method", name)->autosend(false)->done(client->body);
         } else {
             Slice id(client->id);
             if(id.empty()) {
@@ -509,11 +567,12 @@ int Loop::client_request(ISlice name, Connect *client) {
                 id.set(client->id);
             }
             std::string sid = id.as_string();
-            if(wait_response[sid] != NULL) {
-                ml->workers.push_front(worker);
+            if(server->wait_response[sid] != NULL) {
+                q->workers.push_front(worker);
                 worker->link();
+                worker->status = STATUS_WAIT_JOB;
                 if(server->log & 4) std::cout << ltime() << "400 collision id " << key << std::endl;
-                client->send.status("400 Collision Id")->done(-1);
+                client->send.status("400 Collision Id")->done(-1);  // FIXME
                 return -3;
             }
             if(worker->fail_on_disconnect) {
@@ -521,12 +580,12 @@ int Loop::client_request(ISlice name, Connect *client) {
                 client->link();
             }
             worker->send.status("200 OK")->header("Id", id)->header("Method", name)->done(client->body);
-            wait_response[sid] = client;
+            server->wait_response[sid] = client;
             client->link();
             worker->status = STATUS_NET;
         }
     } else {
-        if(server->threads > 1) {
+        /*if(server->threads > 1) {
             int move_to = _nloop;
             for(int i=0;i<server->threads;i++) {
                 if(i == _nloop) continue;
@@ -549,20 +608,34 @@ int Loop::client_request(ISlice name, Connect *client) {
                 client->status = STATUS_MIGRATE_REQUEST;
                 return 7;
             }
-        }
+        }*/
 
-        ml->clients.push_back(client);
+        //std::cout << "no worker\n";
+        q->clients.push_back(client);
         client->link();
     }
-    client->status = STATUS_WAIT_RESPONSE;
+
+    //std::cout << "client: wait result 2\n";  // DEBUG
+    client->status = CLIENT_WAIT_RESULT;
+    //std::cout << "unlock: clietn_request\n";  // DEBUG
+    }
+
+
+    if(worker && worker->send_buffer.size()) {
+        worker->write_mode(true);
+    }
+    if(client->send_buffer.size()) {
+        client->write_mode(true);
+    }
+
     return 0;
 };
 
 int Loop::worker_result(ISlice id, Connect *worker) {
-    auto it = wait_response.find(id.as_string());
-    if(it == wait_response.end()) return -1;
+    auto it = server->wait_response.find(id.as_string());
+    if(it == server->wait_response.end()) return -1;
     Connect *client = it->second;
-    wait_response.erase(it);
+    server->wait_response.erase(it);
 
     client->unlink();
     if(client->is_closed()) return -2;
@@ -586,8 +659,9 @@ int Loop::worker_result_noid(Connect *worker) {
     client->unlink();
 
     if(client->is_closed()) return -2;
-    client->send.status("200 OK")->done(worker->body);
+    //std::cout << "client: status net\n";  // DEBUG
     client->status = STATUS_NET;
+    client->send.status("200 OK")->done(worker->body);
 
     if(worker->nloop != worker->need_loop) migrate(worker, client);
     return 0;
