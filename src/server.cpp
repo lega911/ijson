@@ -286,13 +286,13 @@ void Loop::_loop() {
                 conn->go_loop = false;
                 if(conn->is_closed()) continue;
                 set_poll_mode(conn->fd, -1);
-                if(server->log & 64) std::cout << "balancer: migrate client request " << _nloop << " -> " << conn->need_loop << std::endl;
+                if(server->log & 64) std::cout << "migrate fd " << conn->fd << ", " << _nloop << " -> " << conn->need_loop << std::endl;
                 auto loop = server->loops[conn->need_loop];
                 loop->accept(conn);
 
                 if(conn->status == STATUS_MIGRATE_REQUEST) {
-                    loop->wake();
                     loop->accept_request = true;
+                    loop->wake();
                 }
             }
         }
@@ -486,7 +486,7 @@ int Loop::client_request(ISlice name, Connect *client) {
         worker->unlink();
         if(worker->is_closed() || worker->status != STATUS_WAIT_JOB || worker->nloop != _nloop) {
             // TODO: close wrong connection?
-            if(server->log & 8) std::cout << ltime() << "dead worker\n";
+            if(server->log & 8) std::cout << ltime() << "dead worker " << worker << std::endl;
             worker = NULL;
             continue;
         }
@@ -540,6 +540,9 @@ int Loop::client_request(ISlice name, Connect *client) {
             }
 
             if(move_to != _nloop) {
+                // DEBUG
+                std::cout << "move request " << client->fd << ", " << _nloop << " -> " << move_to << std::endl;
+
                 client->name.set(name);
                 client->need_loop = move_to;
                 client->go_loop = true;

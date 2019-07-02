@@ -258,7 +258,9 @@ void Connect::header_completed() {
 
         counter++;
         loop->worker_result_noid(this);
-        rpc_add();
+        if(go_loop) {
+            // TODO move worker
+        } else rpc_add();
         return;
     }
 
