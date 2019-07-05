@@ -13,9 +13,8 @@
 #define HTTP_REQUEST_COMPLETED 3
 
 #define STATUS_NET 21
-#define STATUS_WAIT_JOB 22
-
-#define STATUS_WAIT_RESULT 24
+#define STATUS_WORKER_WAIT_JOB 22
+#define STATUS_WORKER_WAIT_RESULT 24
 #define STATUS_MIGRATE_REQUEST 30
 
 #define CLIENT_WAIT_RESULT 23
@@ -57,16 +56,11 @@ public:
     Server *server;
     std::mutex mutex;
 
-    u64 counter;
-    u64 counter_ext;
-
     Connect(Server *server, int fd) {
         _socket_status = 1;
         this->server = server;
         this->fd = fd;
         _link = 0;
-        counter = 0;
-        counter_ext = 0;
         nloop = 0;
         need_loop = 0;
         go_loop = false;
@@ -103,7 +97,6 @@ private:
     int content_length;
     int http_version;  // 10, 11
     Buffer buffer;
-
     Buffer path;
 public:
     Buffer name;

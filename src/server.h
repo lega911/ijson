@@ -16,10 +16,22 @@ class Connect;
 
 class Queue {
 public:
-    long last_worker;
-    std::mutex mutex;
     std::deque<Connect*> workers;
     std::deque<Connect*> clients;
+};
+
+
+class QueueLine {
+public:
+    long last_worker;
+    std::mutex mutex;
+    Queue *queue;
+    QueueLine(int n) {
+        queue = new Queue[n];
+    }
+    ~QueueLine() {
+        delete[] queue;
+    }
 };
 
 
@@ -54,9 +66,11 @@ public:
     void start();
     Lock autolock(int except=-1);
 
-    std::map<std::string, Queue*> _queue;
+    std::map<std::string, QueueLine*> _queue;
     std::map<std::string, Connect*> wait_response;
-    Queue *get_queue(std::string &key, bool create=false);
+    std::mutex wait_lock;
+
+    QueueLine *get_queue(std::string &key, bool create=false);
 };
 
 

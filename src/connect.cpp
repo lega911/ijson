@@ -56,7 +56,7 @@ void Connect::on_send() {
 
 
 void Connect::on_recv(char *buf, int size) {
-    if(!(status == STATUS_NET || (status == STATUS_WAIT_RESULT && noid))) {
+    if(!(status == STATUS_NET || (status == STATUS_WORKER_WAIT_RESULT && noid))) {
         if(server->log & 4) std::cout << "warning: data is come, but connection is not ready\n";
         std::cout << "connect " << this << ", status " << status << ", loop " << nloop << "\n";
         buffer.add(buf, size);
@@ -140,7 +140,7 @@ void Connect::on_recv(char *buf, int size) {
             if(!worker_mode) name.clear();
             this->jdata.reset();
             content_length = 0;
-            if(status != STATUS_WAIT_RESULT) {
+            if(status != STATUS_WORKER_WAIT_RESULT) {
                 if(worker_mode) throw error::NotImplemented("Wrong status for worker");
                 fail_on_disconnect = false;
                 if(client) client->unlink();
@@ -257,7 +257,6 @@ void Connect::header_completed() {
             return;
         };
 
-        //counter++;
         loop->worker_result_noid(this);
         if(go_loop) {
             // TODO move worker
@@ -270,7 +269,6 @@ void Connect::header_completed() {
             this->send.status("400 Result expected")->done(-1);
             return;
         };
-        //counter++;
         int r = loop->worker_result_noid(this);
         if(r == 0) {
             this->send.status("200 OK")->done(1);
@@ -310,7 +308,6 @@ void Connect::header_completed() {
             if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
             this->send.status("400 No id")->done(-1);
         } else {
-            //counter++;
             int r = loop->worker_result(id, this);
             if(r == 0) {
                 this->send.status("200 OK")->done(1);
@@ -373,15 +370,22 @@ void Connect::send_details() {
     LOCK _l(server->global_lock);
     for(const auto &it : server->_queue) {
         std::string name = it.first;
-        Queue *q = it.second;
+        QueueLine *ql = it.second;
         res.add("\"");
         res.add(name);
         res.add("\":{\"last_worker\":");
-        res.add_number(q->last_worker);
+        res.add_number(ql->last_worker);
         res.add(",\"workers\":");
-        res.add_number(q->workers.size());
+
+        int worker_count = 0;
+        int client_count = 0;
+        for(int i=0;i<server->threads;i++) {
+            worker_count += ql->queue[i].workers.size();
+            client_count += ql->queue[i].clients.size();
+        }
+        res.add_number(worker_count);
         res.add(",\"clients\":");
-        res.add_number(q->clients.size());
+        res.add_number(client_count);
         res.add("},\n");
     };
     if(res.size() > 2) res.resize(0, res.size() - 2);
@@ -397,10 +401,13 @@ void Connect::send_help() {
     LOCK _l(server->global_lock);
     for(const auto &it : server->_queue) {
         std::string name = it.first;
-        Queue *q = it.second;
+        QueueLine *ql = it.second;
         res.add(name);
-        res.add("  x ");
-        res.add_number(q->workers.size());
+        res.add("  x ?");
+
+        int worker_count = 0;
+        for(int i=0;i<server->threads;i++) worker_count += ql->queue[i].workers.size();
+        res.add_number(worker_count);
         res.add("\n");
     }
     send.status("200 OK")->done(res);

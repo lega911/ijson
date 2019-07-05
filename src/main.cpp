@@ -24,6 +24,7 @@ const char *help_info = "\n\
         16 - connect, disconnect\n\
         32 - recv / send content\n\
         64 - balancing info\n\
+        128 - debugging info\n\
 ";
 
 
