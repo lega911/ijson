@@ -103,3 +103,29 @@ def test_request_withnoid():
     r = post('/one', json={'params': 1})
     assert r.status_code == 200
     assert r.json()['result'] == 'ok'
+
+
+def test_worker_mode():
+    def worker():
+        s = requests.Session()
+        task = s.post('http://localhost:8001/rpc/worker', json={'params': '/test/worker'}).json()
+        while True:
+            time.sleep(0.1)
+            if task.get('stop'):
+                break
+            task = s.post('http://localhost:8001/rpc/worker', json={'result': sum(task['nums'])}).json()
+
+    threading.Thread(target=worker).start()
+    time.sleep(0.1)
+
+    result = post('/test/worker', json={'nums': [1]}).json()
+    assert result['result'] == 1
+
+    result = post('/test/worker', json={'nums': [1, 3, 5]}).json()
+    assert result['result'] == 9
+
+    result = post('/test/worker', json={'nums': [7, 11, 13, 17]}).json()
+    assert result['result'] == 48
+
+    r = post('/test/worker', json={'stop': True})
+    assert r.status_code == 503
