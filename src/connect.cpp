@@ -366,7 +366,9 @@ void Connect::gen_id() {
 
 void Connect::send_details() {
     Buffer res(256);
-    res.add("{");
+    res.add("{\"_version\":\"");
+    res.add(ijson_version);
+    res.add("\",\n");
     LOCK _l(server->global_lock);
     for(const auto &it : server->_queue) {
         std::string name = it.first;
