@@ -419,21 +419,22 @@ int Loop::_add_worker(Slice name, Connect *worker) {
                 client = NULL;
                 continue;
             }
-            if(client->status != CLIENT_WAIT_RESULT) {
-                if(server->log & 8) std::cout << ltime() << "client is busy!!! " << client << std::endl;
-                client = NULL;
-                continue;
+
+            bool skip = true;
+            if(client->status == CLIENT_WAIT_RESULT) {
+                client->mutex.lock();
+                if(client->status == CLIENT_WAIT_RESULT) {
+                    client->status = CONNECT_BUSY;
+                    skip = false;
+                }
+                client->mutex.unlock();
             }
 
-            client->mutex.lock();
-            if(client->status != CLIENT_WAIT_RESULT) {
-                client->mutex.unlock();
+            if(skip) {
                 if(server->log & 8) std::cout << ltime() << "client is busy!!! " << client << std::endl;
                 client = NULL;
                 continue;
             }
-            client->status = CONNECT_BUSY;
-            client->mutex.unlock();
 
             if(worker->noid) break;
             Slice id = client->id;
@@ -542,21 +543,22 @@ int Loop::client_request(ISlice name, Connect *client) {
                 worker = NULL;
                 continue;
             }
-            if(worker->status != STATUS_WORKER_WAIT_JOB) {
-                if(server->log & 8) std::cout << "worker is not ready " << worker << std::endl;
-                worker = NULL;
-                continue;
+
+            bool busy = true;
+            if(worker->status == STATUS_WORKER_WAIT_JOB) {
+                worker->mutex.lock();
+                if(worker->status == STATUS_WORKER_WAIT_JOB) {
+                    worker->status = CONNECT_BUSY;
+                    busy = false;
+                }
+                worker->mutex.unlock();
             }
 
-            worker->mutex.lock();
-            if(worker->status != STATUS_WORKER_WAIT_JOB) {
-                worker->mutex.unlock();
+            if(busy) {
                 if(server->log & 8) std::cout << "worker is not ready " << worker << std::endl;
                 worker = NULL;
                 continue;
             }
-            worker->status = CONNECT_BUSY;
-            worker->mutex.unlock();
             break;
         };
 
@@ -660,22 +662,21 @@ int Loop::worker_result_noid(Connect *worker) {
 };
 
 void Loop::on_disconnect(Connect *conn) {
-    Connect *c = conn;
-    if(!c->fail_on_disconnect) return;
-    if(c->noid) {
-        if(c->status == STATUS_WORKER_WAIT_RESULT) {
-            if(!c->client) throw Exception("No client");
-            if(!c->client->is_closed()) c->client->send.status("503 Service Unavailable")->done(-1);
-            c->client->status = STATUS_NET;
-        } else if(c->client) {
+    if(!conn->fail_on_disconnect) return;
+    if(conn->noid) {
+        if(conn->status == STATUS_WORKER_WAIT_RESULT) {
+            if(!conn->client) throw Exception("No client");
+            if(!conn->client->is_closed()) conn->client->send.status("503 Service Unavailable")->done(-1);
+            conn->client->status = STATUS_NET;
+        } else if(conn->client) {
             throw error::NotImplemented("Client is linked to pending worker");
         }
-    } else if(c->client) {
-        worker_result(c->client->id, NULL);
+    } else if(conn->client) {
+        worker_result(conn->client->id, NULL);
     }
-    if(c->client) {
-        c->client->unlink();
-        c->client = NULL;
+    if(conn->client) {
+        conn->client->unlink();
+        conn->client = NULL;
     };
 };
 
