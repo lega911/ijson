@@ -21,7 +21,7 @@ const char *help_info = "\n\
         2 - errors / filtered / invalid request / wrong http request / error parsing\n\
         4 - warnings\n\
         8 - info messages\n\
-        16 - connect, disconnect\n\
+        16 - connect, disconnect, delete connection\n\
         32 - recv / send content\n\
         64 - balancing info\n\
         128 - debugging info\n\

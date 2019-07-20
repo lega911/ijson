@@ -662,6 +662,15 @@ int Loop::worker_result_noid(Connect *worker) {
 };
 
 void Loop::on_disconnect(Connect *conn) {
+    if(conn->status == CLIENT_WAIT_RESULT && !conn->id.empty()) {
+        auto it = server->wait_response.find(conn->id.as_string());
+        if(it != server->wait_response.end()) {
+            server->wait_lock.lock();
+            server->wait_response.erase(it);
+            server->wait_lock.unlock();
+            conn->unlink();
+        }
+    };
     if(!conn->fail_on_disconnect) return;
     if(conn->noid) {
         if(conn->status == STATUS_WORKER_WAIT_RESULT) {

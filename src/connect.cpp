@@ -405,7 +405,7 @@ void Connect::send_help() {
         std::string name = it.first;
         QueueLine *ql = it.second;
         res.add(name);
-        res.add("  x ?");
+        res.add("  x ");
 
         int worker_count = 0;
         for(int i=0;i<server->threads;i++) worker_count += ql->queue[i].workers.size();
