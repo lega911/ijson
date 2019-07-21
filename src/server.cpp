@@ -128,8 +128,8 @@ void Server::start() {
         loops[i] = loop;
     }
 
-    //Balancer balancer(this);
-    //if(threads > 1) balancer.start();
+    Balancer balancer(this);
+    balancer.start();
 
     _accept();
 };
@@ -144,20 +144,21 @@ Lock Server::autolock(int except) {
 }
 
 
-QueueLine *Server::get_queue(std::string &key, bool create) {
-    auto it = _queue.find(key);
-    if(it != _queue.end()) return it->second;
+QueueLine *Server::get_queue(ISlice key, bool create) {
+    int n = _mapper.find(key);
+    if(n) return _queue_list[n-1];
     if(!create) return NULL;
 
-    QueueLine *l;
     LOCK _l(global_lock);
-    it = _queue.find(key);
-    if(it != _queue.end()) l = it->second;
-    else {
-        l = new QueueLine(threads);
-        _queue[key] = l;
-    }
-    return l;
+    n = _mapper.find(key);
+    if(n) return _queue_list[n-1];
+
+    QueueLine *ql = new QueueLine(threads);
+    ql->name.set(key);
+    _queue_list.push_back(ql);
+    _mapper.add(key, _queue_list.size());
+
+    return ql;
 }
 
 
@@ -391,9 +392,7 @@ void Loop::add_worker(ISlice name, Connect *worker) {
 
 int Loop::_add_worker(Slice name, Connect *worker) {
     if(!name.empty() && name.ptr()[0] == '/') name.remove(1);
-    std::string key = name.as_string();
-
-    QueueLine *ql = server->get_queue(key, true);
+    QueueLine *ql = server->get_queue(name, true);
     Queue *q;
 
     Connect *client = NULL;
@@ -515,10 +514,9 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 };
 
 int Loop::client_request(ISlice name, Connect *client) {
-    auto key = name.as_string();
-    QueueLine *ql = server->get_queue(key);
+    QueueLine *ql = server->get_queue(name);
     if(!ql) {
-        if(server->log & 4) std::cout << ltime() << "404 no method " << key << std::endl;
+        if(server->log & 4) std::cout << ltime() << "404 no method " << name.as_string() << std::endl;
         client->send.status("404 Not Found")->done(-32601);
         return -1;
     }
@@ -592,7 +590,7 @@ int Loop::client_request(ISlice name, Connect *client) {
                 ql->queue[worker->nloop].workers.push_front(worker);
                 ql->mutex.unlock();
                 client->send.status("400 Collision Id")->done(-1);
-                if(server->log & 4) std::cout << ltime() << "400 collision id " << key << std::endl;
+                if(server->log & 4) std::cout << ltime() << "400 collision id " << name.as_string() << std::endl;
                 return -3;
             }
             if(worker->fail_on_disconnect) {

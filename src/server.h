@@ -8,6 +8,7 @@
 #include <mutex>
 #include <thread>
 #include "utils.h"
+#include "mapper.h"
 
 
 class Loop;
@@ -23,6 +24,7 @@ public:
 
 class QueueLine {
 public:
+    Buffer name;
     long last_worker;
     std::mutex mutex;
     Queue *queue;
@@ -54,7 +56,10 @@ public:
     Loop **loops;
     std::mutex global_lock;
 
-    Server() {
+    std::mutex _free_lock;
+    std::vector<char*> _free_list;
+
+    Server() : _mapper(this) {
         log = 0;
         port = 8001;
         threads = 1;
@@ -66,11 +71,12 @@ public:
     void start();
     Lock autolock(int except=-1);
 
-    std::map<std::string, QueueLine*> _queue;
+    Mapper _mapper;
+    std::vector<QueueLine*> _queue_list;
+    QueueLine *get_queue(ISlice key, bool create=false);
+
     std::map<std::string, Connect*> wait_response;
     std::mutex wait_lock;
-
-    QueueLine *get_queue(std::string &key, bool create=false);
 };
 
 

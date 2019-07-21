@@ -13,7 +13,17 @@ void Balancer::_start() {
     int threads = server->threads;
 
     while(true) {
-        usleep(500000);  // 500ms
-        // will be implemented later
+        usleep(500'000);  // 500ms
+        // balancer will be implemented later
+
+        // free memory
+        if(server->_free_list.size()) {
+            server->_free_lock.lock();
+            std::vector<char*> v(server->_free_list);
+            server->_free_list.clear();
+            server->_free_lock.unlock();
+            usleep(10'000);
+            for(auto const &ptr : v) _free(ptr);
+        }
     };
 };

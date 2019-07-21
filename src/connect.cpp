@@ -370,11 +370,10 @@ void Connect::send_details() {
     res.add(ijson_version);
     res.add("\",\n");
     LOCK _l(server->global_lock);
-    for(const auto &it : server->_queue) {
-        std::string name = it.first;
-        QueueLine *ql = it.second;
+
+    for(const auto &ql : server->_queue_list) {
         res.add("\"");
-        res.add(name);
+        res.add(ql->name);
         res.add("\":{\"last_worker\":");
         res.add_number(ql->last_worker);
         res.add(",\"workers\":");
@@ -401,10 +400,8 @@ void Connect::send_help() {
     res.add(ijson_version);
     res.add("\n\nrpc/add\nrpc/result\nrpc/details\nrpc/help\n\n");
     LOCK _l(server->global_lock);
-    for(const auto &it : server->_queue) {
-        std::string name = it.first;
-        QueueLine *ql = it.second;
-        res.add(name);
+    for(const auto &ql : server->_queue_list) {
+        res.add(ql->name);
         res.add("  x ");
 
         int worker_count = 0;
