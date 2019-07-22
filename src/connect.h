@@ -98,6 +98,7 @@ private:
     int http_version;  // 10, 11
     Buffer buffer;
     Buffer path;
+    Slice header_option;
 public:
     Buffer name;
     int status;

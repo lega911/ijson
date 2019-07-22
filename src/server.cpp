@@ -471,9 +471,9 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         }
         if(worker->noid) {
             worker->status = STATUS_WORKER_WAIT_RESULT;
-            worker->send.status("200 OK")->header("Method", name)->autosend(false)->done(client->body);
+            worker->send.status("200 OK")->header("Name", name)->autosend(false)->done(client->body);
         } else {
-            worker->send.status("200 OK")->header("Id", client->id)->header("Method", name)->autosend(false)->done(client->body);
+            worker->send.status("200 OK")->header("Id", client->id)->header("Name", name)->autosend(false)->done(client->body);
             server->wait_lock.lock();
             server->wait_response[sid] = client;
             server->wait_lock.unlock();
@@ -568,7 +568,7 @@ int Loop::client_request(ISlice name, Connect *client) {
             worker->client = client;
             client->link();
             worker->status = STATUS_WORKER_WAIT_RESULT;
-            worker->send.status("200 OK")->header("Method", name)->autosend(false)->done(client->body);
+            worker->send.status("200 OK")->header("Name", name)->autosend(false)->done(client->body);
         } else {
             Slice id(client->id);
             if(id.empty()) {
@@ -597,7 +597,7 @@ int Loop::client_request(ISlice name, Connect *client) {
                 worker->client = client;
                 client->link();
             }
-            worker->send.status("200 OK")->header("Id", id)->header("Method", name)->autosend(false)->done(client->body);
+            worker->send.status("200 OK")->header("Id", id)->header("Name", name)->autosend(false)->done(client->body);
             server->wait_lock.lock();
             server->wait_response[sid] = client;
             server->wait_lock.unlock();

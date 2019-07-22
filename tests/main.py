@@ -5,6 +5,8 @@ import requests
 
 
 def post(path, *a, **kw):
+    if 'timeout' not in kw:
+        kw['timeout'] = 5
     return requests.post('http://localhost:8001' + path, *a, **kw)
 
 
@@ -56,7 +58,7 @@ def test_multimethods():
             while True:
                 r = s.post('http://localhost:8001/rpc/add', json={'params': {'name': 'test/cmd2+x15,test/cmd2,stop', 'id': False}})
                 assert r.status_code == 200
-                worker = r.headers['method']
+                worker = r.headers['name']
                 if worker == 'stop':
                     break
                 task = r.json()
@@ -129,3 +131,69 @@ def test_worker_mode():
 
     r = post('/test/worker', json={'stop': True})
     assert r.status_code == 503
+
+
+def test_pattern():
+    h_response = None
+
+    def worker():
+        nonlocal h_response
+        link = 'http://localhost:8001/rpc/worker'
+        s = requests.Session()
+        r = s.post(link, json={'params': 'pattern/*'})
+        while True:
+            name = r.headers['name'][8:]
+            time.sleep(0.1)
+
+            if not name:
+                r = s.post(link, data=b'sum,mul,stop')
+                continue
+            
+            if name == 'sum':
+                task = r.json()
+                response = {'result': sum(task['value'])}
+            elif name == 'mul':
+                task = r.json()
+                response = {'result': task['value'][0] * task['value'][1]}
+            elif name == 'stop':
+                r = s.post(link, json={'result': 'ok'}, headers={'Option': 'stop'})
+                break
+            else:
+                response = {'error': 'no method'}
+
+            r = s.post(link, json=response)
+
+        time.sleep(0.2)
+        h_response = s.post('http://localhost:8001/task/revert', json={'id': 12345}).json()
+
+    threading.Thread(target=worker).start()
+    time.sleep(0.1)
+
+    assert requests.get('http://localhost:8001/pattern/').text == 'sum,mul,stop'
+
+    r = post('/pattern/sum', json={'value': [1, 2, 3, 4]})
+    assert r.json()['result'] == 10
+
+    r = post('/pattern/mul', json={'value': [3, 5]})
+    assert r.json()['result'] == 15
+
+    r = post('/pattern/typo', json={'value': [3, 5]})
+    assert r.json()['error'] == 'no method'
+
+    r = post('/pattern/stop')
+    assert r.status_code == 200
+    assert r.json()['result'] == 'ok'
+
+    error = None
+    try:
+        requests.get('http://localhost:8001/pattern/', timeout=0.1)
+    except Exception as e:
+        error = e
+    assert isinstance(error, requests.exceptions.ReadTimeout)
+    
+    task = post('/rpc/add', json={'params': '/task/revert'}).json()
+    assert task['id'] == 12345
+    post('/rpc/result', json={'id': 12345, 'result': 'ok'})
+    time.sleep(0.1)
+    assert h_response['result'] == 'ok'
+    assert h_response['id'] == 12345

@@ -137,6 +137,7 @@ void Connect::on_recv(char *buf, int size) {
         if(http_step == HTTP_START) {
             body.clear();
             id.clear();
+            header_option.clear();
             if(!worker_mode) name.clear();
             this->jdata.reset();
             content_length = 0;
@@ -203,6 +204,9 @@ void Connect::read_header(Slice &data) {
     } else if(data.starts_with("Id: ") || data.starts_with("id: ")) {
         data.remove(4);
         id.set(data);
+    } else if(data.starts_with("Option: ")) {
+        data.remove(8);
+        header_option = data;
     }
 }
 
@@ -258,9 +262,14 @@ void Connect::header_completed() {
         };
 
         loop->worker_result_noid(this);
-        if(go_loop) {
-            // TODO move worker
-        } else rpc_add();
+        if(!header_option.empty() && header_option.equal("stop")) {
+            worker_mode = false;
+            this->send.status("200 OK")->done(1);
+            status = STATUS_NET;
+            return;
+        }
+        //if(go_loop)  // TODO move worker
+        rpc_add();
         return;
     }
 
