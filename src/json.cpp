@@ -141,8 +141,8 @@ Slice JsonParser::read_string() {
 /* JData */
 
 void JData::parse(ISlice data) {
-    if(!data.empty()) _data.set(data);
     reset();
+    if(!data.empty()) _data.set(data);
 }
 
 void JData::reset() {
@@ -151,6 +151,7 @@ void JData::reset() {
     main.reset();
     params.reset();
     _name.clear();
+    _data.clear();
 }
 
 Slice JData::get_id() {

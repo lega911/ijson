@@ -197,3 +197,22 @@ def test_pattern():
     time.sleep(0.1)
     assert h_response['result'] == 'ok'
     assert h_response['id'] == 12345
+
+
+def test4():
+    h_response = None
+
+    def worker():
+        nonlocal h_response
+        link = 'http://localhost:8001/rpc/worker'
+        s = requests.Session()
+        s.post(link, json={'params': 'test4/*'})
+        s.post(link, data=b'sum,mul,stop')
+
+    threading.Thread(target=worker).start()
+    time.sleep(0.1)
+
+    assert requests.get('http://localhost:8001/test4/').text == 'sum,mul,stop'
+
+    r = post('/test4/sum', json={'value': [1, 2, 3, 4]})
+    assert r.status_code == 503

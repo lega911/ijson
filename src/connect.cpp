@@ -85,6 +85,7 @@ void Connect::on_recv(char *buf, int size) {
             try {
                 this->header_completed();
             } catch (const error::InvalidData &e) {
+                if(server->log & 4) std::cout << ltime() << "Error: Invalid data/json, socket " << fd << " " << (void*)this << std::endl;
                 this->send.status("400 Invalid data")->done(-32700);
             }
             http_step = HTTP_START;

@@ -10,7 +10,6 @@ class Exception : public std::exception {
 private:
     const char *_reason;
 public:
-    static const char *message;
     Exception() {};
     Exception(const char *reason) : _reason(reason) {};
     virtual const char* what() const noexcept {
