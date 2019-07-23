@@ -345,6 +345,13 @@ void Connect::rpc_add() {
     Slice name(this->name);
     if(name.empty()) name = this->jdata.get_name();
 
+    if(name.empty()) {
+        worker_mode = false;
+        this->send.status("400 No name")->done(-32602);
+        if(server->log & 4) std::cout << ltime() << "No name for worker " << this << std::endl;
+        return;
+    }
+
     if(worker_mode) {
         if(this->name.empty()) this->name.set(name);
         this->noid = true;
@@ -357,12 +364,7 @@ void Connect::rpc_add() {
         this->fail_on_disconnect = this->noid || jdata.get_fail_on_disconnect();
     }
 
-    if(name.empty()) {
-        worker_mode = false;
-        this->send.status("400 No name")->done(-32602);
-    } else {
-        loop->add_worker(name, this);
-    }
+    loop->add_worker(name, this);
 }
 
 void Connect::gen_id() {
@@ -396,6 +398,12 @@ void Connect::send_details() {
         res.add_number(worker_count);
         res.add(",\"clients\":");
         res.add_number(client_count);
+
+        if(!ql->info.empty()) {
+            res.add(",\"info\":\"");
+            res.add(ql->info);
+            res.add("\"");
+        }
         res.add("},\n");
     };
     if(res.size() > 2) res.resize(0, res.size() - 2);
@@ -416,6 +424,10 @@ void Connect::send_help() {
         int worker_count = 0;
         for(int i=0;i<server->threads;i++) worker_count += ql->queue[i].workers.size();
         res.add_number(worker_count);
+        if(!ql->info.empty()) {
+            res.add("  ");
+            res.add(ql->info);
+        }
         res.add("\n");
     }
     send.status("200 OK")->done(res);

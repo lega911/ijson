@@ -28,6 +28,7 @@ public:
     long last_worker;
     std::mutex mutex;
     Queue *queue;
+    Buffer info;
     QueueLine(int n) {
         queue = new Queue[n];
     }

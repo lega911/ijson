@@ -375,7 +375,7 @@ void Loop::add_worker(ISlice name, Connect *worker) {
     int i = 0;
     Slice n;
     for(;i<name.size();i++) {
-        if(ptr[i] == ',') {
+        if(ptr[i] == ',' || ptr[i] == ' ') {
             n.set(&ptr[start], i - start);
             start = i + 1;
             if(_add_worker(n, worker) == 1) {
@@ -394,6 +394,9 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     if(!name.empty() && name.ptr()[0] == '/') name.remove(1);
     QueueLine *ql = server->get_queue(name, true);
     Queue *q;
+
+    auto info = worker->jdata.get_info();
+    if(!info.empty()) ql->info.set(info);
 
     Connect *client = NULL;
     int result;

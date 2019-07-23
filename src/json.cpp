@@ -6,6 +6,7 @@ void JsonParser::reset() {
     this->id.clear();
     this->params.clear();
     this->name.clear();
+    this->info.clear();
     this->fail_on_disconnect = false;
     this->noid = false;
 };
@@ -82,6 +83,7 @@ int JsonParser::_parse_object(ISlice buf, bool is_params) {
             this->name.set(value);
             unescape(this->name);
         } else if(key.equal("fail_on_disconnect")) this->fail_on_disconnect = value.equal("true");
+        else if(key.equal("info")) info = value;
 
         strip();
         a = next();
@@ -167,6 +169,11 @@ Slice JData::get_name() {
     return params.name;
 }
 
+Slice JData::get_info() {
+    ensure_params();
+    return params.info;
+}
+
 bool JData::get_fail_on_disconnect() {
     ensure_params();
     return params.fail_on_disconnect;
@@ -175,4 +182,17 @@ bool JData::get_fail_on_disconnect() {
 bool JData::get_noid() {
     ensure_params();
     return params.noid;
+}
+
+
+void json::escape_string(ISlice &src, Buffer &dest) {
+    dest.resize(src.size(), 0);
+    int j = 0;
+    for(int i=0;i<src.size();i++,j++) {
+        char a = src.ptr()[i];
+        if(j + 2 > dest.get_capacity()) dest.resize(j + 2);
+        if(a == '\\') dest.ptr()[j++] = '\\';
+        dest.ptr()[j] = a;
+    }
+    dest.resize(0, j);
 }

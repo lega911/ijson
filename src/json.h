@@ -6,6 +6,11 @@
 #include "utils.h"
 
 
+namespace json {
+    void escape_string(ISlice &src, Buffer &dest);
+};
+
+
 class JsonParser {
 private:
     ISlice buf;
@@ -27,6 +32,7 @@ public:
     Slice method;
     Slice id;
     Slice params;
+    Slice info;
     Buffer name;
     bool fail_on_disconnect;
     bool noid;
@@ -68,6 +74,7 @@ public:
     Slice get_id();
     Slice get_method();
     Slice get_name();
+    Slice get_info();
     bool get_fail_on_disconnect();
     bool get_noid();
 };

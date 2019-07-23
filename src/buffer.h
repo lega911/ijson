@@ -221,6 +221,7 @@ public:
         resize(capacity);
         _size = size;
     }
+    inline int get_capacity() {return _cap;}
 
     void add(const char *buf, int size) {
         if(buf == NULL) throw error::NoData("Buffer.add buf == NULL");
