@@ -14,13 +14,13 @@ def test_default():
     clients = [None, None]
 
     def _request(i):
-        time.sleep(0.1 + 0.1 * i)
-        clients[i] = post('/test/cmd1', json={'id': i + 1, 'params': 'ubuntu'}, timeout=5)
+        time.sleep(0.1 * i)
+        clients[i - 1] = post('/test/cmd1', json={'id': i, 'params': 'ubuntu'})
 
-    threading.Thread(target=_request, args=(0,)).start()
     threading.Thread(target=_request, args=(1,)).start()
+    threading.Thread(target=_request, args=(2,)).start()
 
-    worker = post('/rpc/add', json={'params': 'test/cmd1'}, timeout=5)
+    worker = post('/rpc/add', json={'name': 'test/cmd1'})
     assert worker.status_code == 200
     request = worker.json()
     assert request['id'] == 1
@@ -34,7 +34,7 @@ def test_default():
     assert response['result'] == 'linux'
     assert clients[1] is None
 
-    worker = post('/rpc/add', json={'params': 'test/cmd1'}, timeout=5)
+    worker = post('/rpc/add', json={'name': 'test/cmd1'})
     assert worker.status_code == 200
     request = worker.json()
     assert request['id'] == 2
@@ -56,7 +56,7 @@ def test_multimethods():
         try:
             s = requests.Session()
             while True:
-                r = s.post('http://localhost:8001/rpc/add', json={'params': {'name': 'test/cmd2+x15,test/cmd2,stop', 'id': False}})
+                r = s.post('http://localhost:8001/rpc/add', json={'name': 'test/cmd2+x15,test/cmd2,stop', 'option': 'no_id'})
                 assert r.status_code == 200
                 worker = r.headers['name']
                 if worker == 'stop':
@@ -95,9 +95,9 @@ def test_multimethods():
         assert worker == 'stopped'
 
 
-def test_request_withnoid():
+def test_request_without_id():
     def run_worker():
-        r = post('/rpc/add', json={'params': 'one'})
+        r = post('/rpc/add', json={'name': 'one'})
         post('/rpc/result', json={'result': 'ok'}, headers={'id': r.headers['id']})
     
     threading.Thread(target=run_worker).start()
@@ -110,7 +110,7 @@ def test_request_withnoid():
 def test_worker_mode():
     def worker():
         s = requests.Session()
-        task = s.post('http://localhost:8001/rpc/worker', json={'params': '/test/worker'}).json()
+        task = s.post('http://localhost:8001/rpc/worker', json={'name': '/test/worker', 'info': 'test for worker mode'}).json()
         while True:
             time.sleep(0.1)
             if task.get('stop'):
@@ -132,6 +132,9 @@ def test_worker_mode():
     r = post('/test/worker', json={'stop': True})
     assert r.status_code == 503
 
+    r = post('/rpc/details').json()
+    assert r['test/worker']['info'] == 'test for worker mode'
+
 
 def test_pattern():
     h_response = None
@@ -140,7 +143,7 @@ def test_pattern():
         nonlocal h_response
         link = 'http://localhost:8001/rpc/worker'
         s = requests.Session()
-        r = s.post(link, json={'params': 'pattern/*'})
+        r = s.post(link, json={'name': 'pattern/*'})
         while True:
             name = r.headers['name'][8:]
             time.sleep(0.1)
@@ -191,7 +194,7 @@ def test_pattern():
         error = e
     assert isinstance(error, requests.exceptions.ReadTimeout)
     
-    task = post('/rpc/add', json={'params': '/task/revert'}).json()
+    task = post('/rpc/add', json={'name': '/task/revert'}).json()
     assert task['id'] == 12345
     post('/rpc/result', json={'id': 12345, 'result': 'ok'})
     time.sleep(0.1)
@@ -206,7 +209,7 @@ def test4():
         nonlocal h_response
         link = 'http://localhost:8001/rpc/worker'
         s = requests.Session()
-        s.post(link, json={'params': 'test4/*'})
+        s.post(link, json={'name': 'test4/*'})
         s.post(link, data=b'sum,mul,stop')
 
     threading.Thread(target=worker).start()
