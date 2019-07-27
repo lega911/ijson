@@ -19,7 +19,7 @@ public:
     ISlice() {
         reset();
     }
-    void reset() {
+    virtual void reset() {
         _ptr = NULL;
         _size = 0;
     }
@@ -271,6 +271,9 @@ public:
         set(s.ptr(), s.size());
     }
     void clear() {
+        _size = 0;
+    }
+    virtual void reset() {
         _size = 0;
     }
     void remove_left(int n) {

@@ -31,9 +31,8 @@ private:
     char *buf_t;
     int _size;
     int _cap;
-    inline Step* get_step(int n) {return (Step*)(abuf.load() + (n - 1) * sizeof(Step)); };
     inline Step* get_step_t(int n) {
-        if(buf_t == NULL) return get_step(n);
+        if(buf_t == NULL) return (Step*)(abuf.load() + (n - 1) * sizeof(Step));
         return (Step*)(buf_t + (n - 1) * sizeof(Step));
     };
     u16 _next();

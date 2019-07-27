@@ -76,10 +76,16 @@ void Mapper::add(ISlice name, u16 value) {
     }
 };
 
+
+inline Step *_get_step(char *ptr, int n) {
+    return (Step*)(ptr + (n - 1) * sizeof(Step));
+}
+
 u16 Mapper::find(ISlice name) {
     u16 std = 0;
     int next;
-    Step *step = get_step(1);
+    char *ptr = abuf.load();
+    Step *step = _get_step(ptr, 1);
     for(int i=0;;i++) {
         if(step->std) std = step->std;
         if(i >= name.size()) {
@@ -93,6 +99,6 @@ u16 Mapper::find(ISlice name) {
 
         next = step->k[a];
         if(!next) return std;
-        step = get_step(next);
+        step = _get_step(ptr, next);
     }
 }
