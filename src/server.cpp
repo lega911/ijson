@@ -395,8 +395,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     QueueLine *ql = server->get_queue(name, true);
     Queue *q;
 
-    auto info = worker->jdata.get_info();
-    if(!info.empty()) ql->info.set(info);
+    if(!worker->info.empty()) ql->info.set(worker->info);
 
     Connect *client = NULL;
     int result;
@@ -441,13 +440,17 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             if(worker->noid) break;
             Slice id = client->id;
             if(id.empty()) {
-                id = client->jdata.get_id();
+                while(client->json.scan()) {
+                    if(client->json.key == "id") {
+                        id = client->json.value;
+                        client->id.set(id);
+                        break;
+                    }
+                }
                 if(id.empty()) {
                     client->gen_id();
                     id = client->id;
-                } else {
-                    client->id.set(id);
-                }
+                };
             }
             sid = id.as_string();
 
@@ -575,8 +578,13 @@ int Loop::client_request(ISlice name, Connect *client) {
         } else {
             Slice id(client->id);
             if(id.empty()) {
-                id = client->jdata.get_id();
-                if(!id.empty()) client->id.set(id);
+                while(client->json.scan()) {
+                    if(client->json.key == "id") {
+                        id = client->json.value;
+                        client->id.set(client->json.value);
+                        break;
+                    }
+                }
             }
             if(id.empty()) {
                 client->gen_id();

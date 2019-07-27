@@ -108,7 +108,8 @@ public:
     bool noid;
     bool worker_mode;
     Connect *client;
-    JData jdata;
+    Json json;
+    Slice info;
 
     int read_method(Slice &line);
     void read_header(Slice &data);

@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
         if(i + 1 < argc) next.set(argv[i + 1]);
         else next.reset();
 
-        if(s.equal("--host")) {
+        if(s == "--host") {
             if(next.valid()) {
                 Slice _h = next.split_left(':');
                 if(!_h.empty()) server.host.set(_h);
@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
                 std::cout << "Wrong host\n";
                 return 1;
             }
-        } else if(s.equal("--filter")) {
+        } else if(s == "--filter") {
             if(next.valid()) {
                 NetFilter nf(next);
                 server.net_filter.push_back(nf);
@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
                 std::cout << "Wrong port\n";
                 return 1;
             }
-        } else if(s.equal("--log")) {
+        } else if(s == "--log") {
             if(next.valid()) {
                 try {
                     server.log = next.atoi();
@@ -82,13 +82,13 @@ int main(int argc, char** argv) {
                 std::cout << "Wrong log option\n";
                 return 1;
             }
-        } else if(s.equal("--help")) {
+        } else if(s == "--help") {
             std::cout << "ijson " << ijson_version << std::endl;
             std::cout << help_info;
             return 0;
-        } else if(s.equal("--jsonrpc2")) {
+        } else if(s == "--jsonrpc2") {
             server.jsonrpc2 = true;
-        } else if(s.equal("--threads")) {
+        } else if(s == "--threads") {
             server.threads = -1;
             if(next.valid()) {
                 try {

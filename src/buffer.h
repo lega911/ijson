@@ -20,9 +20,6 @@ public:
     ISlice() {
         reset();
     }
-    ~ISlice() {
-        reset();
-    }
     void reset() {
         _ptr = NULL;
         _size = 0;
@@ -50,12 +47,11 @@ public:
         return i == _size;
     }
 
+    inline bool operator==(const char *s) {return equal(s);}
+    inline bool operator!=(const char *s) {return !equal(s);}
     inline bool empty() {return size() == 0;}
     inline bool valid() {return _ptr != NULL;}
-    inline char* ptr() {
-        if(_ptr == NULL) throw error::NoData();
-        return _ptr;
-    }
+    inline char* ptr() {return _ptr;}
     inline int size() {return _size;}
     std::string as_string() {
         return as_string(5);
@@ -90,10 +86,6 @@ public:
     Slice(ISlice &s) {
         if(s.valid()) set(s.ptr(), s.size());
     };
-    ~Slice() {
-        _ptr = NULL;
-        _size = 0;
-    }
     void set(ISlice &s) {
         set(s.ptr(), s.size());
     }

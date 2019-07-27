@@ -2,7 +2,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-static const char *ijson_version = "0.3.3";
+static const char *ijson_version = "0.3.4";
 
 #include <stdlib.h>
 #include <string.h>

@@ -139,8 +139,9 @@ void Connect::on_recv(char *buf, int size) {
             body.clear();
             id.clear();
             header_option.clear();
+            info.clear();
+            json.reset();
             if(!worker_mode) name.clear();
-            this->jdata.reset();
             content_length = 0;
             if(status != STATUS_WORKER_WAIT_RESULT) {
                 if(worker_mode) throw error::NotImplemented("Wrong status for worker");
@@ -230,7 +231,7 @@ void Connect::header_completed() {
         std::cout << ltime() << this->path.as_string() << " " << this->body.size() << "b " << repr.ptr();
     }
     
-    if(this->path.equal("echo")) {
+    if(this->path == "echo") {
         Slice response("ok");
         this->send.status("200 OK")->done(response);
         return;
@@ -238,7 +239,7 @@ void Connect::header_completed() {
 
 
     #ifdef DEBUG
-    if(this->path.equal("rpc/migrate")) {
+    if(this->path == "rpc/migrate") {
         this->send.status("200 OK")->done();
         this->need_loop = this->nloop + 1;
         if(this->need_loop >= server->threads) this->need_loop = 0;
@@ -246,7 +247,7 @@ void Connect::header_completed() {
         return;
     }
 
-    if(this->path.equal("debug")) {
+    if(this->path == "debug") {
         Buffer r(32);
         r.add("Memory allocated: ");
         r.add_number(get_memory_allocated());
@@ -257,13 +258,13 @@ void Connect::header_completed() {
     #endif
 
     if(worker_mode) {
-        if(!this->path.equal("rpc/worker")) {
+        if(this->path != "rpc/worker") {
             this->send.status("400 Worker expected")->done(-1);
             return;
         };
 
         loop->worker_result_noid(this);
-        if(!header_option.empty() && header_option.equal("stop")) {
+        if(!header_option.empty() && header_option == "stop") {
             worker_mode = false;
             this->send.status("200 OK")->done(1);
             status = STATUS_NET;
@@ -275,7 +276,7 @@ void Connect::header_completed() {
     }
 
     if(noid) {
-        if(!this->path.equal("rpc/result")) {
+        if(this->path != "rpc/result") {
             this->send.status("400 Result expected")->done(-1);
             return;
         };
@@ -292,10 +293,23 @@ void Connect::header_completed() {
 
     Slice method;
     Slice id(this->id);
-    jdata.parse(this->body);
+    json.load(this->body);
+    bool root_json = true;
 
-    if(this->path.equal("rpc/call")) {
-        method = jdata.get_method();
+    if(this->path == "rpc/call") {
+        Slice params;
+        while(json.scan()) {
+            if(json.key == "method") method = json.value;
+            else if(json.key == "id" && id.empty()) {
+                id = json.value;
+                this->id.set(id);
+            } else if(json.key == "params") params = json.value;
+        }
+        if(!params.empty()) {
+            root_json = false;
+            json.load(params);
+        }
+
         if(!method.empty() && method.ptr()[0] == '/') method.remove(1);
         if(method.empty()) {
             this->send.status("400 No method")->done(-32601);
@@ -305,15 +319,22 @@ void Connect::header_completed() {
         method = this->path;
     };
 
-    if(method.equal("rpc/worker")) {
+    if(method == "rpc/worker") {
         worker_mode = true;
         rpc_add();
         return;
-    } else if(method.equal("rpc/add")) {
+    } else if(method == "rpc/add") {
         rpc_add();
         return;
-    } else if(method.equal("rpc/result")) {
-        if(id.empty()) id = jdata.get_id();
+    } else if(method == "rpc/result") {
+        if(id.empty() && root_json) {
+            while(json.scan()) {
+                if(json.key == "id") {
+                    id = json.value;
+                    break;
+                }
+            }
+        }
         if(id.empty()) {
             if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
             this->send.status("400 No id")->done(-1);
@@ -331,10 +352,10 @@ void Connect::header_completed() {
         }
         status = STATUS_NET;
         return;
-    } else if(method.equal("rpc/details")) {
+    } else if(method == "rpc/details") {
         send_details();
         return;
-    } else if(method.equal("/") || method.equal("rpc/help")) {
+    } else if(method == "/" || method == "rpc/help") {
         send_help();
         return;
     }
@@ -344,26 +365,35 @@ void Connect::header_completed() {
 
 void Connect::rpc_add() {
     Slice name(this->name);
-    if(name.empty()) name = this->jdata.get_name();
+
+    while(json.scan()) {
+        if(json.key == "name") {
+            json.decode_value(this->name);
+            name = this->name;
+        } else if(json.key == "info") {
+            info = json.value;
+        } else if(json.key == "option") {
+            if(json.value == "no_id") {
+                this->noid = true;
+                this->fail_on_disconnect = true;
+            } else if(json.value == "fail_on_disconnect") this->fail_on_disconnect = true;
+            else {
+                // TODO: Wrong option!!!
+            }
+        }
+    }
 
     if(name.empty()) {
         worker_mode = false;
         this->send.status("400 No name")->done(-32602);
         if(server->log & 4) std::cout << ltime() << "No name for worker " << this << std::endl;
         return;
-    }
+    };
 
     if(worker_mode) {
-        if(this->name.empty()) this->name.set(name);
         this->noid = true;
         this->fail_on_disconnect = true;
-    } else if(this->id.equal("false")) {
-        this->noid = true;
-        this->fail_on_disconnect = true;
-    } else {
-        this->noid = this->jdata.get_noid();
-        this->fail_on_disconnect = this->noid || jdata.get_fail_on_disconnect();
-    }
+    };
 
     loop->add_worker(name, this);
 }
