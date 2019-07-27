@@ -10,8 +10,9 @@ const char *help_info = "\n\
     --jsonrpc2\n\
     --threads <number>\n\
 \n\
-    /rpc/add\n\
-    /rpc/result\n\
+    /rpc/add     {name, [option], [info]}\n\
+    /rpc/result  {[id]}\n\
+    /rpc/worker  {name, [info]}\n\
     /rpc/details\n\
     /rpc/help\n\
 \n\

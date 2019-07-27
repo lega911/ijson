@@ -446,7 +446,7 @@ void Connect::send_help() {
     Buffer res(256);
     res.add("ijson ");
     res.add(ijson_version);
-    res.add("\n\nrpc/add\nrpc/result\nrpc/details\nrpc/help\n\n");
+    res.add("\n\nrpc/add     {name, [option], [info]}\nrpc/result  {[id]}\nrpc/worker  {name, [info]}\nrpc/details\nrpc/help\n\n");
     LOCK _l(server->global_lock);
     for(const auto &ql : server->_queue_list) {
         res.add(ql->name);
