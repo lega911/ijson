@@ -1,6 +1,5 @@
 
-#ifndef BUFFER_H
-#define BUFFER_H
+#pragma once
 
 #include <string.h>
 #include <iostream>
@@ -284,5 +283,3 @@ public:
         }
     }
 };
-
-#endif /* BUFFER_H */

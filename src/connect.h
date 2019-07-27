@@ -1,6 +1,5 @@
 
-#ifndef CONNECT_H
-#define CONNECT_H
+#pragma once
 
 #include "server.h"
 #include "utils.h"
@@ -121,5 +120,3 @@ public:
     void header_completed();
     void gen_id();
 };
-
-#endif  /* CONNECT_H */

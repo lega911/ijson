@@ -1,6 +1,5 @@
 
-#ifndef EXCEPTION_H
-#define EXCEPTION_H
+#pragma once
 
 #include <stddef.h>
 #include <exception>
@@ -61,5 +60,3 @@ namespace error {
     void fatal_error(int sig);
     void catch_fatal();
 #endif
-
-#endif /* EXCEPTION_H */

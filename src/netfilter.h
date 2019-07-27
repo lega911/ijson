@@ -1,6 +1,5 @@
 
-#ifndef NETFILTER_H
-#define NETFILTER_H
+#pragma once
 
 #include "utils.h"
 
@@ -13,5 +12,3 @@ public:
     NetFilter(Slice &mask);
     bool match(uint32_t ip);
 };
-
-#endif

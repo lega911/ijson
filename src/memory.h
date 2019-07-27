@@ -1,6 +1,5 @@
 
-#ifndef MEMORY_H
-#define MEMORY_H
+#pragma once
 
 #include "stdint.h"
 
@@ -20,6 +19,4 @@ typedef int64_t i64;
     #define _malloc malloc
     #define _realloc realloc
     #define _free free
-#endif
-
 #endif

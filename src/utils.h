@@ -1,6 +1,5 @@
 
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 static const char *ijson_version = "0.3.4";
 
@@ -34,6 +33,3 @@ public:
     void lock(int n);
     void unlock();
 };
-
-#endif /* UTILS_H */
-

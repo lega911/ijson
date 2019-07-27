@@ -1,6 +1,5 @@
 
-#ifndef SERVER_H
-#define SERVER_H
+#pragma once
 
 #include <vector>
 #include <map>
@@ -113,6 +112,3 @@ public:
     int worker_result_noid(Connect *worker);
     void migrate(Connect *w, Connect *c);
 };
-
-
-#endif /* SERVER_H */

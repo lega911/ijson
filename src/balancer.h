@@ -1,6 +1,5 @@
 
-#ifndef BALANCER_H
-#define BALANCER_H
+#pragma once
 
 #include <thread>
 #include "utils.h"
@@ -17,6 +16,3 @@ public:
     Balancer(Server *server) : server(server) {};
     void start();
 };
-
-
-#endif
