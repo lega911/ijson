@@ -4,6 +4,7 @@
 #include <vector>
 #include <string.h>
 #include <mutex>
+#include <atomic>
 #include "utils.h"
 
 
@@ -26,10 +27,11 @@ public:
 private:
     Server *server;
     std::mutex mutex;
-    char *buf, *buf_t;
+    std::atomic<char*> abuf;
+    char *buf_t;
     int _size;
     int _cap;
-    inline Step* get_step(int n) {return (Step*)(buf + (n - 1) * sizeof(Step)); };
+    inline Step* get_step(int n) {return (Step*)(abuf.load() + (n - 1) * sizeof(Step)); };
     inline Step* get_step_t(int n) {
         if(buf_t == NULL) return get_step(n);
         return (Step*)(buf_t + (n - 1) * sizeof(Step));

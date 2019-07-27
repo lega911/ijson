@@ -8,8 +8,9 @@ Mapper::Mapper(Server *server) {
     this->server = server;
     _cap = 4;
     _size = 1;
-    buf = (char*)_malloc(_cap * sizeof(Step));
+    char *buf = (char*)_malloc(_cap * sizeof(Step));
     memset(buf, 0, _cap * sizeof(Step));
+    abuf = buf;
     buf_t = NULL;
 };
 
@@ -24,7 +25,7 @@ u16 Mapper::_next() {
     if(buf_t) buf_t = (char*)_realloc(buf_t, _cap * sizeof(Step));
     else {
         buf_t = (char*)_malloc(_cap * sizeof(Step));
-        memcpy(buf_t, buf, old_size);
+        memcpy(buf_t, abuf.load(), old_size);
     };
     memset(&buf_t[old_size], 0, sizeof(Step) * _cap - old_size);
     return _size;
@@ -63,8 +64,7 @@ void Mapper::add(ISlice name, u16 value) {
 
     char *old = NULL;
     if(buf_t) {
-        old = buf;
-        buf = buf_t;
+        old = abuf.exchange(buf_t);
         buf_t = NULL;
     }
     mutex.unlock();
