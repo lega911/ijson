@@ -3,8 +3,7 @@
 /ijson.debug
 docker/ijson
 docker/ijson.debug
-docker-alpine/ijson
-docker-alpine/ijson.debug
+docker-slim/ijson
 /src/main.bin
 /info
 /todo

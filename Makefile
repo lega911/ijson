@@ -12,5 +12,7 @@ clean:
 docker:
 	g++ src/*.cpp -luuid -pthread -std=c++17 -DDOCKER -O2 -o docker/ijson
 	g++ src/*.cpp -luuid -pthread -std=c++17 -DDOCKER -DDEBUG -rdynamic -o docker/ijson.debug
+docker_slim:
+	g++ src/*.cpp -luuid -pthread -std=c++17 -DDOCKER -O2 -o docker-slim/ijson -static
 test:
 	cd tests; pytest37 main.py
