@@ -10,6 +10,9 @@ const char *help_info = "\n\
     --jsonrpc2\n\
     --threads <number>\n\
 \n\
+    --help\n\
+    --version\n\
+\n\
     /rpc/add     {name, [option], [info]}\n\
     /rpc/result  {[id]}\n\
     /rpc/worker  {name, [info]}\n\
@@ -89,6 +92,9 @@ int main(int argc, char** argv) {
             return 0;
         } else if(s == "--jsonrpc2") {
             server.jsonrpc2 = true;
+        } else if(s == "--version") {
+            std::cout << ijson_version << std::endl;
+            return 0;
         } else if(s == "--threads") {
             server.threads = -1;
             if(next.valid()) {
