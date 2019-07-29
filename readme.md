@@ -33,14 +33,14 @@ docker run -i -p 8001:8001 lega911/ijson
 #### Example with curl (client + worker)
 ``` bash
 # 1. a worker publishes rpc command
-curl -d '{"params": "/test/command"}' http://localhost:8001/rpc/add
+curl -d '{"name": "/test/command"}' localhost:8001/rpc/add
 
 # 2. a client invokes the command
-curl -d '{"id": 123, "params": "test data"}' http://localhost:8001/test/command
+curl -d '{"id": 123, "params": "test data"}' localhost:8001/test/command
 
 # the worker receives {"id": 123, "params": "test data"}
 # 3. and sends response with the same id
-curl -d '{"id": 123, "result": "data received"}' http://localhost:8001/rpc/result
+curl -d '{"id": 123, "result": "data received"}' localhost:8001/rpc/result
 
 # client receives {"id": 123, "result": "data received"}
 ```
@@ -55,9 +55,12 @@ print(response.json())
 ``` python
 while True:
     # get a request
-    request = requests.post('http://127.0.0.1:8001/rpc/add', json={'params': '/test/command'}).json()
+    request = requests.post('http://127.0.0.1:8001/rpc/add', json={'name': '/test/command'}).json()
     
     # send a response
-    response = {'id': request['id'], 'result': request['params'] + ' world!'}
+    response = {
+        'id': request['id'],
+        'result': request['params'] + ' world!'
+    }
     requests.post('http://127.0.0.1:8001/rpc/result', json=response)
 ```
