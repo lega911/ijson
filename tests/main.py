@@ -219,3 +219,26 @@ def test4():
 
     r = post('/test4/sum', json={'value': [1, 2, 3, 4]})
     assert r.status_code == 503
+
+
+def test5():
+    response = None
+    def client():
+        nonlocal response
+        time.sleep(0.1)
+        response = post('/rpc/call', json={'jsonrpc': '2.0', 'method': 'test5/command', 'params': 'test data', 'id': 456})
+
+    th = threading.Thread(target=client)
+    th.start()
+    
+    request = post('/rpc/call', json={'jsonrpc': '2.0', 'method': 'rpc/add', 'params': {'name': 'test5/command'}})
+    assert request.status_code == 200
+    task = request.json()
+    assert task['params'] == 'test data'
+
+    r = post('/rpc/call', json={'jsonrpc': '2.0', 'method': 'rpc/result', 'id': 456, 'result': 'ok'})
+    assert r.status_code == 200
+
+    th.join()
+    assert response.status_code == 200
+    assert response.json()['result'] == 'ok'
