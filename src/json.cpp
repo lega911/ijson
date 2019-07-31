@@ -30,7 +30,9 @@ bool Json::scan() {
     strip();
     if(next() != ':') throw error::InvalidData();
     strip();
-    char a = next(0);
+    char a = next();
+    index--;
+
     if(a == '"') value = read_string();
     else if(a == '{' || a == '[') value = read_object();
     else value = read_value();
@@ -89,8 +91,8 @@ Slice Json::read_value() {
 Slice Json::read_object() {
     int lvl = 0;
     int start = index;
-    char a;
-    for(;;a=next()) {
+    while(true) {
+        char a = next();
         if(a == '{' || a == '[') {
             lvl++;
         } else if(a == '}' || a == ']') {
@@ -102,7 +104,6 @@ Slice Json::read_object() {
             continue;
         }
     }
-    throw error::InvalidData();
 }
 
 

@@ -29,11 +29,9 @@ private:
     Slice _data;
     int index;
     void strip();
-    inline char next(int shift=1) {
+    inline char next() {
         if(index >= _data.size()) throw error::InvalidData();
-        char a = _data.ptr()[index];
-        index += shift;
-        return a;
+        return _data.ptr()[index++];
     }
     Slice read_string();
     Slice read_value();
