@@ -138,8 +138,8 @@ void Connect::on_recv(char *buf, int size) {
         if(http_step == HTTP_START) {
             body.clear();
             id.clear();
-            header_option.clear();
-            info.clear();
+            header_option.reset();
+            info.reset();
             json.reset();
             if(!worker_mode) name.clear();
             content_length = 0;

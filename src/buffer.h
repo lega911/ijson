@@ -16,13 +16,7 @@ protected:
     char *_ptr;
     int _size;
 public:
-    ISlice() {
-        reset();
-    }
-    virtual void reset() {
-        _ptr = NULL;
-        _size = 0;
-    }
+    ISlice() : _ptr(NULL), _size(0) {}
 
     bool starts_with(const char *s) {
         int i = 0;
@@ -52,10 +46,7 @@ public:
     inline bool valid() {return _ptr != NULL;}
     inline char* ptr() {return _ptr;}
     inline int size() {return _size;}
-    std::string as_string() {
-        return as_string(5);
-    }
-    std::string as_string(int _default) {
+    std::string as_string(int _default=-1) {
         std::string s;
         if(valid()) {
             s.append(ptr(), size());
@@ -70,10 +61,7 @@ public:
 
 class Slice : public ISlice {
 public:
-    Slice() {
-        _ptr = NULL;
-        _size = 0;
-    }
+    Slice() {}
     Slice(const char *ptr, int size) {
         _ptr = (char*)ptr;
         _size = size;
@@ -83,20 +71,19 @@ public:
         _size = strlen(ptr);
     }
     Slice(ISlice &s) {
-        if(s.valid()) set(s.ptr(), s.size());
-    };
-    void set(ISlice &s) {
-        set(s.ptr(), s.size());
+        set(s);
     }
     void set(const char *ptr, int size) {
         this->_ptr = (char*)ptr;
         _size = size;
     }
     void set(const char *ptr) {
-        this->_ptr = (char*)ptr;
-        _size = strlen(ptr);
+        set(ptr, strlen(ptr));
     }
-    void clear() {
+    void set(ISlice &s) {
+        set(s.ptr(), s.size());
+    }
+    void reset() {
         set(NULL, 0);
     }
 
@@ -220,21 +207,15 @@ public:
         memmove(&_ptr[_size], buf, size);
         _size += size;
     }
-    void add(std::string &s) {
-        add(s.data(), s.size());
-    }
-    void add(ISlice &s) {
-        add(s.ptr(), s.size());
-    }
-    void add(ISlice *s) {
-        add(s->ptr(), s->size());
-    }
     void add(const char *i) {
         while(*i != 0) {
             if(_size >= _cap) resize(_size + 1);
             _ptr[_size++] = *i;
             i++;
         }
+    }
+    void add(ISlice &s) {
+        add(s.ptr(), s.size());
     }
     void add_number(int n) {
         resize(_size + 12);
@@ -271,9 +252,6 @@ public:
         set(s.ptr(), s.size());
     }
     void clear() {
-        _size = 0;
-    }
-    virtual void reset() {
         _size = 0;
     }
     void remove_left(int n) {
