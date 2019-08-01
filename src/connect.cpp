@@ -56,9 +56,8 @@ void Connect::on_send() {
 
 
 void Connect::on_recv(char *buf, int size) {
-    if(!(status == STATUS_NET || (status == STATUS_WORKER_WAIT_RESULT && noid))) {
-        if(server->log & 4) std::cout << "warning: data is come, but connection is not ready\n";
-        std::cout << "connect " << this << ", status " << status << ", loop " << nloop << "\n";
+    if(!(status == Status::net || (status == Status::worker_wait_result && noid))) {
+        if(server->log & 4) std::cout << ltime() << "connect " << (void*)this << ", warning: data is come, but connection is not ready\n";
         buffer.add(buf, size);
         return;
     }
@@ -122,7 +121,7 @@ void Connect::on_recv(char *buf, int size) {
                 }
 
                 if(data.size()) {
-                    if(status == STATUS_NET) {
+                    if(status == Status::net) {
                         http_step = HTTP_START;
                         continue;
                     } else {
@@ -143,7 +142,7 @@ void Connect::on_recv(char *buf, int size) {
             json.reset();
             if(!worker_mode) name.clear();
             content_length = 0;
-            if(status != STATUS_WORKER_WAIT_RESULT) {
+            if(status != Status::worker_wait_result) {
                 if(worker_mode) throw error::NotImplemented("Wrong status for worker");
                 fail_on_disconnect = false;
                 if(client) client->unlink();
@@ -267,7 +266,7 @@ void Connect::header_completed() {
         if(!header_option.empty() && header_option == "stop") {
             worker_mode = false;
             this->send.status("200 OK")->done(1);
-            status = STATUS_NET;
+            status = Status::net;
             return;
         }
         //if(go_loop)  // TODO move worker
@@ -287,7 +286,7 @@ void Connect::header_completed() {
             if(server->log & 4) std::cout << ltime() << "499 Client is gone\n";
             this->send.status("499 Closed")->done(-1);
         } else throw error::NotImplemented("Wrong result for noid");
-        status = STATUS_NET;
+        status = Status::net;
         return;
     }
 
@@ -350,7 +349,7 @@ void Connect::header_completed() {
                 this->send.status("400 Wrong id")->done(-1);
             }
         }
-        status = STATUS_NET;
+        status = Status::net;
         return;
     } else if(method == "rpc/details") {
         send_details();

@@ -6,18 +6,15 @@
 #include "json.h"
 
 
+enum class Status {
+    net, worker_wait_job, worker_wait_result, migration, client_wait_result, busy
+};
+
+
 #define HTTP_START 0
 #define HTTP_HEADER 1
 #define HTTP_READ_BODY 2
 #define HTTP_REQUEST_COMPLETED 3
-
-#define STATUS_NET 21
-#define STATUS_WORKER_WAIT_JOB 22
-#define STATUS_WORKER_WAIT_RESULT 24
-#define STATUS_MIGRATE_REQUEST 30
-
-#define CLIENT_WAIT_RESULT 23
-#define CONNECT_BUSY 41
 
 
 class HttpSender {
@@ -68,7 +65,7 @@ public:
         send.set_connect(this);
 
         http_step = HTTP_START;
-        status = STATUS_NET;
+        status = Status::net;
         client = NULL;
     };
     ~Connect() {
@@ -100,7 +97,7 @@ private:
     Slice header_option;
 public:
     Buffer name;
-    int status;
+    Status status;
     Buffer body;
     Buffer id;
     bool fail_on_disconnect;

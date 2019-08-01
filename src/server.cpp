@@ -301,7 +301,7 @@ void Loop::_loop() {
                 auto loop = server->loops[conn->need_loop];
                 loop->accept(conn);
 
-                if(conn->status == STATUS_MIGRATE_REQUEST) {
+                if(conn->status == Status::migration) {
                     loop->accept_request = true;
                     loop->wake();
                 }
@@ -328,7 +328,7 @@ void Loop::_loop() {
             for (int i = 0; i <= server->max_fd; i++) {
                 Connect* conn = server->connections[i];
                 if(!conn || conn->nloop != _nloop) continue;
-                if(conn->status != STATUS_MIGRATE_REQUEST) continue;
+                if(conn->status != Status::migration) continue;
                 if(conn->is_closed()) continue;
 
                 client_request(conn->name, conn);
@@ -422,10 +422,10 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             }
 
             bool skip = true;
-            if(client->status == CLIENT_WAIT_RESULT) {
+            if(client->status == Status::client_wait_result) {
                 client->mutex.lock();
-                if(client->status == CLIENT_WAIT_RESULT) {
-                    client->status = CONNECT_BUSY;
+                if(client->status == Status::client_wait_result) {
+                    client->status = Status::busy;
                     skip = false;
                 }
                 client->mutex.unlock();
@@ -461,7 +461,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
                 // colision id
                 if(server->log & 2) std::cout << ltime() << "collision id\n";
                 client->send.status("400 Collision Id")->done(-1);  // FIXME
-                client->status = STATUS_NET;
+                client->status = Status::net;
                 client = NULL;
                 continue;
             }
@@ -476,7 +476,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             worker->client->link();
         }
         if(worker->noid) {
-            worker->status = STATUS_WORKER_WAIT_RESULT;
+            worker->status = Status::worker_wait_result;
             worker->send.status("200 OK")->header("Name", name)->autosend(false)->done(client->body);
         } else {
             worker->send.status("200 OK")->header("Id", client->id)->header("Name", name)->autosend(false)->done(client->body);
@@ -484,7 +484,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             server->wait_response[sid] = client;
             server->wait_lock.unlock();
             client->link();
-            worker->status = STATUS_NET;
+            worker->status = Status::net;
         }
         result = 1;
     } else {
@@ -504,7 +504,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 
         q0->workers.push_back(worker);
         worker->link();
-        worker->status = STATUS_WORKER_WAIT_JOB;
+        worker->status = Status::worker_wait_job;
         result = 0;
     }
 
@@ -549,10 +549,10 @@ int Loop::client_request(ISlice name, Connect *client) {
             }
 
             bool busy = true;
-            if(worker->status == STATUS_WORKER_WAIT_JOB) {
+            if(worker->status == Status::worker_wait_job) {
                 worker->mutex.lock();
-                if(worker->status == STATUS_WORKER_WAIT_JOB) {
-                    worker->status = CONNECT_BUSY;
+                if(worker->status == Status::worker_wait_job) {
+                    worker->status = Status::busy;
                     busy = false;
                 }
                 worker->mutex.unlock();
@@ -573,7 +573,7 @@ int Loop::client_request(ISlice name, Connect *client) {
         if(worker->noid) {
             worker->client = client;
             client->link();
-            worker->status = STATUS_WORKER_WAIT_RESULT;
+            worker->status = Status::worker_wait_result;
             worker->send.status("200 OK")->header("Name", name)->autosend(false)->done(client->body);
         } else {
             Slice id(client->id);
@@ -597,7 +597,7 @@ int Loop::client_request(ISlice name, Connect *client) {
             server->wait_lock.unlock();
             if(busy) {
                 worker->link();
-                worker->status = STATUS_WORKER_WAIT_JOB;
+                worker->status = Status::worker_wait_job;
                 ql->queue[worker->nloop].workers.push_front(worker);
                 ql->mutex.unlock();
                 client->send.status("400 Collision Id")->done(-1);
@@ -613,14 +613,14 @@ int Loop::client_request(ISlice name, Connect *client) {
             server->wait_response[sid] = client;
             server->wait_lock.unlock();
             client->link();
-            worker->status = STATUS_NET;
+            worker->status = Status::net;
         }
     } else {
         ql->queue[_nloop].clients.push_back(client);
         client->link();
     };
 
-    client->status = CLIENT_WAIT_RESULT;
+    client->status = Status::client_wait_result;
     ql->mutex.unlock();
 
     if(worker && worker->send_buffer.size()) {
@@ -645,7 +645,7 @@ int Loop::worker_result(ISlice id, Connect *worker) {
     if(client->is_closed()) return -2;
     if(worker) client->send.status("200 OK")->header("Id", id)->done(worker->body);
     else client->send.status("503 Service Unavailable")->header("Id", id)->done(-1);
-    client->status = STATUS_NET;
+    client->status = Status::net;
 
     if(worker && worker->nloop != worker->need_loop) migrate(worker, client);
     return 0;
@@ -663,7 +663,7 @@ int Loop::worker_result_noid(Connect *worker) {
     client->unlink();
 
     if(client->is_closed()) return -2;
-    client->status = STATUS_NET;
+    client->status = Status::net;
     client->send.status("200 OK")->done(worker->body);
 
     if(worker->nloop != worker->need_loop) migrate(worker, client);
@@ -671,7 +671,7 @@ int Loop::worker_result_noid(Connect *worker) {
 };
 
 void Loop::on_disconnect(Connect *conn) {
-    if(conn->status == CLIENT_WAIT_RESULT && !conn->id.empty()) {
+    if(conn->status == Status::client_wait_result && !conn->id.empty()) {
         auto it = server->wait_response.find(conn->id.as_string());
         if(it != server->wait_response.end()) {
             server->wait_lock.lock();
@@ -682,10 +682,10 @@ void Loop::on_disconnect(Connect *conn) {
     };
     if(!conn->fail_on_disconnect) return;
     if(conn->noid) {
-        if(conn->status == STATUS_WORKER_WAIT_RESULT) {
+        if(conn->status == Status::worker_wait_result) {
             if(!conn->client) throw Exception("No client");
             if(!conn->client->is_closed()) conn->client->send.status("503 Service Unavailable")->done(-1);
-            conn->client->status = STATUS_NET;
+            conn->client->status = Status::net;
         } else if(conn->client) {
             throw error::NotImplemented("Client is linked to pending worker");
         }
