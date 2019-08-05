@@ -5,16 +5,25 @@
 #include <exception>
 
 
+class Buffer;
+
 class Exception : public std::exception {
 private:
     const char *_reason;
+    #ifdef DEBUG
+        Buffer *_trace;
+    #endif
 public:
-    Exception() {};
-    Exception(const char *reason) : _reason(reason) {};
+    Exception();
+    Exception(const char *reason);
     virtual const char* what() const noexcept {
         if(_reason) return _reason;
         return "Exception";
     };
+    const char* trace() const noexcept;
+    #ifdef DEBUG
+        ~Exception();
+    #endif
 };
 
 namespace error {
@@ -59,4 +68,5 @@ namespace error {
     // ./ijson.debug 2>&1 | c++filt
     void fatal_error(int sig);
     void catch_fatal();
+    void get_traceback(Buffer &r);
 #endif
