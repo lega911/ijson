@@ -9,7 +9,7 @@
 void Connect::unlink() {
     _link--;
     if(_link == 0) loop->dead_connections.push_back(this);
-    else if(_link < 0) throw Exception("Wrong link count");
+    else if(_link < 0) THROW("Wrong link count");
 };
 
 void Connect::write_mode(bool active) {
@@ -41,7 +41,7 @@ int Connect::raw_send(const void *buf, uint size) {
 void Connect::on_send() {
     if(send_buffer.size()) {
         int sent = this->raw_send(send_buffer.ptr(), send_buffer.size());
-        if(sent < 0) throw error::NotImplemented("Not implemented: sent < 0");
+        if(sent < 0) THROW("Not implemented: sent < 0");
         send_buffer.remove_left(sent);
     }
 
@@ -124,12 +124,7 @@ void Connect::on_recv(char *buf, int size) {
                     if(status == Status::net) {
                         http_step = HTTP_START;
                         continue;
-                    } else {
-                        throw error::NotImplemented("previous request is not finished");
-                        // buffer.set(data);
-                        // cout << "warning: previous request is not finished\n";
-                        // break;
-                    }
+                    } else THROW("previous request is not finished");
                 }
             }
             break;
@@ -143,13 +138,13 @@ void Connect::on_recv(char *buf, int size) {
             if(!worker_mode) name.clear();
             content_length = 0;
             if(status != Status::worker_wait_result) {
-                if(worker_mode) throw error::NotImplemented("Wrong status for worker");
+                if(worker_mode) THROW("Wrong status for worker");
                 fail_on_disconnect = false;
                 if(client) client->unlink();
                 client = NULL;
                 noid = false;
             } else {
-                if(!noid) throw error::NotImplemented("noid is false");
+                if(!noid) THROW("noid is false");
             }
             if(this->read_method(line) != 0) {
                 if(server->log & 2) std::cout << ltime() << "Wrong http header\n";
@@ -285,7 +280,7 @@ void Connect::header_completed() {
         } else if(r == -2) {
             if(server->log & 4) std::cout << ltime() << "499 Client is gone\n";
             this->send.status("499 Closed")->done(-1);
-        } else throw error::NotImplemented("Wrong result for noid");
+        }
         status = Status::net;
         return;
     }
@@ -467,8 +462,6 @@ void Connect::send_help() {
 /* HttpSender */
 
 HttpSender *HttpSender::status(const char *status) {
-    if(conn == NULL) throw error::NotImplemented();
-
     conn->send_buffer.resize(256);
     conn->send_buffer.add("HTTP/1.1 ");
     conn->send_buffer.add(status);
@@ -480,8 +473,6 @@ HttpSender *HttpSender::status(const char *status) {
 };
 
 HttpSender *HttpSender::header(const char *key, ISlice &value) {
-    if(conn == NULL) throw error::NotImplemented();
-
     conn->send_buffer.add(key);
     conn->send_buffer.add(": ");
     conn->send_buffer.add(value);
@@ -490,8 +481,7 @@ HttpSender *HttpSender::header(const char *key, ISlice &value) {
 };
 
 void HttpSender::done(ISlice &body) {
-    if(conn == NULL) throw error::NotImplemented();
-    if(conn->is_closed()) throw Exception("Trying to send to closed socket");
+    if(conn->is_closed()) THROW("Trying to send to closed socket");
 
     int body_size = body.size();
     if(body_size == 0) {
@@ -507,8 +497,7 @@ void HttpSender::done(ISlice &body) {
 };
 
 void HttpSender::done() {
-    if(conn == NULL) throw error::NotImplemented();
-    if(conn->is_closed()) throw Exception("Trying to send to closed socket");
+    if(conn->is_closed()) THROW("Trying to send to closed socket");
 
     conn->send_buffer.add("Content-Length: 0\r\n\r\n");
     if(_autosend) conn->write_mode(true);
@@ -516,7 +505,6 @@ void HttpSender::done() {
 };
 
 void HttpSender::done(int error) {
-    if(conn == NULL) throw error::NotImplemented();
     if(!conn->server->jsonrpc2) done();
     else {
         Slice msg;

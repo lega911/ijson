@@ -4,35 +4,32 @@
 #include <stddef.h>
 #include <exception>
 
+#define THROW(text) throw Exception(text, __FILE__, __LINE__, __PRETTY_FUNCTION__);
 
 class Buffer;
 
 class Exception : public std::exception {
 private:
     const char *_reason;
+    const char *_file;
+    int _line;
+    const char *_func;
     #ifdef DEBUG
         Buffer *_trace;
     #endif
 public:
-    Exception();
-    Exception(const char *reason);
+    Exception(const char *reason, const char *file=NULL, int line=0, const char *func=NULL);
     virtual const char* what() const noexcept {
         if(_reason) return _reason;
         return "Exception";
     };
-    const char* trace() const noexcept;
+    void print(const char *msg) const;
     #ifdef DEBUG
         ~Exception();
     #endif
 };
 
 namespace error {
-    class NotImplemented : public Exception {
-    public:
-        using Exception::Exception;
-        NotImplemented() : Exception("Not implemented") {};
-    };
-
     class NoData : public Exception {
     public:
         using Exception::Exception;
@@ -44,28 +41,9 @@ namespace error {
         using Exception::Exception;
         InvalidData() : Exception("Invalid data") {};
     };
-
-    class OutOfIndex : public Exception {
-    public:
-        using Exception::Exception;
-        OutOfIndex() : Exception("Out of index") {};
-    };
-
-    class ArgumentError : public Exception {
-    public:
-        using Exception::Exception;
-        ArgumentError() : Exception("Argument error") {};
-    };
-
-    class NoMemory : public Exception {
-    public:
-        using Exception::Exception;
-        NoMemory() : Exception("No memory") {};
-    };
 }
 
 #ifdef DEBUG
-    // ./ijson.debug 2>&1 | c++filt
     void fatal_error(int sig);
     void catch_fatal();
     void get_traceback(Buffer &r);

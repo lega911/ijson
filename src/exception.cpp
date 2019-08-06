@@ -1,30 +1,32 @@
 
 #include "exception.h"
 #include "buffer.h"
+#include "utils.h"
 
 
 #ifdef DEBUG
-    Exception::Exception() {
+    Exception::Exception(const char *reason, const char *file, int line, const char *func) : _reason(reason), _file(file), _line(line), _func(func) {
         _trace = new Buffer();
         get_traceback(*_trace);
     };
 
-    Exception::Exception(const char *reason) : _reason(reason) {
-        _trace = new Buffer();
-        get_traceback(*_trace);
-    };
-
-    const char *Exception::trace() const noexcept {
-        return _trace->ptr();
+    void Exception::print(const char *msg) const {
+        std::cout << ltime() << msg << " '" << _reason << "'";
+        if(_file) std::cout << ", file " << _file << ":" << _line << " " << _func << std::endl;
+        else std::cout << std::endl;
+        std::cout << _trace->ptr();
     }
 
     Exception::~Exception() {
         delete _trace;
     }
 #else
-    Exception::Exception() {};
-    Exception::Exception(const char *reason) : _reason(reason) {};
-    const char *Exception::trace() const noexcept {return "";};
+    Exception::Exception(const char *reason, const char *file, int line, const char *func) : _reason(reason), _file(file), _line(line), _func(func) {};
+    void Exception::print(const char *msg) const {
+        std::cout << ltime() << msg << " '" << _reason << "'";
+        if(_file) std::cout << ", file " << _file << ":" << _line << " " << _func << std::endl;
+        else std::cout << std::endl;
+    }
 #endif
 
 
@@ -49,7 +51,6 @@
     };
 
     void get_traceback(Buffer &r) {
-        r.clear();
         void *addr[32];
         char **names;
 
@@ -61,7 +62,7 @@
         char *func = (char*)malloc(funcsize);
 
         Buffer bname(256);
-        for(int i = 0; i<n; i++) {
+        for(int i = 1; i<n; i++) {
             Slice line(names[i]);
             Slice file = line.split_left('(');
             Slice _name = line.split_left('+');

@@ -88,7 +88,7 @@ public:
     }
 
     Slice get(int len) {
-        if(len > _size) throw error::ArgumentError();
+        if(len > _size) THROW("Index error");
         return Slice(ptr(), len);
     }
     Slice pop(int len) {
@@ -189,7 +189,7 @@ public:
         if(_ptr == NULL) {
             _cap = _get_cap(capacity);
             _ptr = (char*)_malloc(_cap);
-            if(_ptr == NULL) throw error::NoMemory();
+            if(_ptr == NULL) THROW("No memory");
         } else if(capacity > _cap) {
             _cap = _get_cap(capacity);
             _ptr = (char*)_realloc(_ptr, _cap);

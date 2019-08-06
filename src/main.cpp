@@ -123,8 +123,10 @@ int main(int argc, char** argv) {
 
     try {
         server.start();
+    } catch (const Exception &e) {
+        if(server.log & 1) e.print("Exception in server.start");
     } catch (const std::exception &e) {
-        std::cout << ltime() << "Fatal exception: " << e.what() << std::endl;
+        if(server.log & 1) std::cout << ltime() << "Fatal exception: " << e.what() << std::endl;
     }
     return 1;
 }
