@@ -4,6 +4,9 @@
 
 #### Benchmark
 ![Performance](files/performance.png)
+
+<sup>[Multi-core result is here](files/performance_mc.png)</sup>
+
 ![Memory usage](files/memory_usage.png)
 
 #### Description
