@@ -22,8 +22,11 @@ u16 Mapper::_next() {
     if(_cap >= 512) _cap += 256;
     else _cap *= 2;
 
-    if(buf_t) buf_t = (char*)_realloc(buf_t, _cap * sizeof(Step));
-    else {
+    if(buf_t) {
+        char *p = (char*)_realloc(buf_t, _cap * sizeof(Step));
+        if(!p) THROW("Realloc error");
+        buf_t = p;
+    } else {
         buf_t = (char*)_malloc(_cap * sizeof(Step));
         memcpy(buf_t, abuf.load(), old_size);
     };

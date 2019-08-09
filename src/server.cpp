@@ -17,8 +17,6 @@
 
 
 typedef struct epoll_event eitem;
-#define MAX_EVENTS 16384
-#define BUF_SIZE 16384
 
 
 void unblock_socket(int fd) {
@@ -62,10 +60,6 @@ bool Server::_valid_ip(u32 ip) {
 
 
 void Server::_accept() {
-    connections = (Connect**)_malloc(sizeof(Connect*) * MAX_EVENTS);
-    if(connections == NULL) THROW("No memory");
-    memset(connections, MAX_EVENTS, sizeof(Connect*));
-
     int balance = 0;
     while (true) {
         struct sockaddr_in peer_addr;
@@ -208,11 +202,8 @@ void Loop::_loop() {
     epollfd = epoll_create1(0);
     if(epollfd < 0) THROW("epoll_create1");
 
-    eitem* events = (eitem*)_malloc(MAX_EVENTS * sizeof(eitem));
-    if(events == NULL) THROW("No memory");
-
-    char *buf = (char*)_malloc(BUF_SIZE);
-    if(buf == NULL) THROW("No memory");
+    eitem events[MAX_EVENTS];
+    char buf[BUF_SIZE];
     while(true) {
         int nready = epoll_wait(epollfd, events, MAX_EVENTS, -1);
         if(nready == -1) {

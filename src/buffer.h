@@ -192,7 +192,9 @@ public:
             if(_ptr == NULL) THROW("No memory");
         } else if(capacity > _cap) {
             _cap = _get_cap(capacity);
-            _ptr = (char*)_realloc(_ptr, _cap);
+            char *p = (char*)_realloc(_ptr, _cap);
+            if(!p) THROW("Realloc error");
+            _ptr = p;
         }
     }
     void resize(int capacity, int size) {

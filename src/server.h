@@ -10,6 +10,9 @@
 #include "mapper.h"
 
 
+#define MAX_EVENTS 16384
+#define BUF_SIZE 16384
+
 class Loop;
 class Connect;
 
@@ -28,7 +31,7 @@ public:
     std::mutex mutex;
     Queue *queue;
     Buffer info;
-    QueueLine(int n) {
+    QueueLine(int n) : last_worker(0) {
         queue = new Queue[n];
     }
     ~QueueLine() {
@@ -52,7 +55,7 @@ public:
     bool jsonrpc2;
     int fake_fd;
     std::vector<NetFilter> net_filter;
-    Connect **connections;
+    Connect *connections[MAX_EVENTS];
     Loop **loops;
     std::mutex global_lock;
 
@@ -66,6 +69,7 @@ public:
         jsonrpc2 = false;
         max_fd = 0;
         fake_fd = 0;
+        memset(connections, 0, MAX_EVENTS * sizeof(Connect*));
     };
 
     void start();
