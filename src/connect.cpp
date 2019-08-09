@@ -444,6 +444,8 @@ void Connect::send_help() {
     LOCK _l(server->global_lock);
     for(const auto &ql : server->_queue_list) {
         res.add(ql->name);
+
+        for(int i=ql->name.size();i<20;i++) res.add(" ", 1);
         res.add("  x ");
 
         int worker_count = 0;
@@ -451,7 +453,9 @@ void Connect::send_help() {
         res.add_number(worker_count);
         if(!ql->info.empty()) {
             res.add("  ");
+            int start = res.size();
             res.add(ql->info);
+            json::unescape(res, start);
         }
         res.add("\n");
     }

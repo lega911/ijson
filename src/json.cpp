@@ -2,11 +2,16 @@
 #include "json.h"
 
 
-void unescape(Buffer &s) {
+void json::unescape(Buffer &s, int start) {
     char *p = s.ptr();
-    int n = 0;
-    for(int i=0;i<s.size();i++) {
-        if(p[i] == '\\') continue;
+    int n = start;
+    bool prefix = false;
+    for(int i=start;i<s.size();i++) {
+        if(!prefix && p[i] == '\\') {
+            prefix = true;
+            continue;
+        }
+        prefix = false;
         p[n] = p[i];
         n++;
     }
@@ -109,5 +114,5 @@ Slice Json::read_object() {
 
 void Json::decode_value(Buffer &dest) {
     dest.set(value);
-    unescape(dest);
+    json::unescape(dest);
 }

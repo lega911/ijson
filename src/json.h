@@ -4,6 +4,11 @@
 #include "utils.h"
 
 
+namespace json {
+    void unescape(Buffer &s, int start=0);
+};
+
+
 class Json {
 public:
     Slice key;
