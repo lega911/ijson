@@ -1,6 +1,7 @@
 
 import sys
 import asyncio
+import uvloop
 from httptools import HttpRequestParser
 import ujson
 
@@ -38,7 +39,8 @@ class Proto(asyncio.Protocol):
 
 if __name__ == '__main__':
     port = int(sys.argv[1])
-    loop = asyncio.get_event_loop()
+    loop = uvloop.new_event_loop()
+    asyncio.set_event_loop(loop)
     coro = loop.create_server(Proto, '127.0.0.1', port)
     srv = loop.run_until_complete(coro)
 
