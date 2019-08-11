@@ -1,7 +1,9 @@
 
 from requests import Session
 
+url = 'http://localhost:8001/rpc/worker'
 s = Session()
+task = s.post(url, json={'name': '/sum'})
 while True:
-    request = s.post('http://localhost:8001/rpc/add', json={'name': '/sum', 'option': 'no_id'})
-    s.post('http://localhost:8001/rpc/result', json={'result': request['a'] + request['b']})
+    response = {'result': task['a'] + task['b']}
+    task = s.post(url, json=response)

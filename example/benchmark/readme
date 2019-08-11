@@ -4,68 +4,76 @@
 
 # Example for testing RabbitMQ:
 
-2) ./rabbit/run.sh         # run rabbitmq
+2) docker run -it --rm --network host rabbitmq
 3) docker run -it --rm --network host -v `pwd`/rabbit:/app py
-  $ taskset 0xfffc python3 worker.py &     # to start worker
-  $ taskset 0xfffc python3 client.py &     # to start client
+  $ python3 worker.py &     # to start worker
+  $ python3 client.py &     # to start client
 
 
 # Inverted Json
 
-2) docker run -it --rm --network host --entrypoint sh lega911/ijson -c "taskset 0x1 /ijson --host 0.0.0.0"
+2) docker run -it --rm --network host lega911/ijson
 3) docker run -it --rm --network host -v `pwd`:/app py
-  $ taskset 0xfffc python3 worker2.py &     # to start worker
-  $ taskset 0xfffc python3 client.py &     # to start client
+  $ python3 worker.py &
+  $ python3 client.py &
 
 
 # Crossbar.io
 
-2) docker run -v $PWD/crossbar:/node -u 0 --rm -it --network host --entrypoint sh crossbario/crossbar -c "taskset 0x1 crossbar start --cbdir /node"
+2) docker run -v $PWD/crossbar:/node -u 0 --rm -it --network host crossbario/crossbar --cbdir /node
 3) docker run -it --rm -v `pwd`/crossbar:/app --network host py
-  $ taskset 0xfffc python3 worker.py &
-  $ taskset 0xfffc python3 client.py &
+  $ python3 worker.py &
+  $ python3 client.py &
 
 
 # ZeroRPC
 
 2) docker run -it --rm -v `pwd`/zerorpc:/app --network host py
-  $ taskset 0x1 python3 worker.py &
-  $ taskset 0xfffc python3 client.py &
+  $ python3 worker.py &
+  $ python3 client.py &
 
 
 # ZeroMQ
 
 2) docker run -it --rm -v `pwd`/zeromq:/app --network host py
-  $ taskset 0x1 python3 worker.py &
-  $ taskset 0xfffc python3 client.py &
+  $ python3 worker.py &
+  $ python3 client.py &
 
 
 # GRPC
 
 2) docker run -it --rm -v `pwd`/grpc:/app --network host py
-  $ taskset 0x1 python3 worker.py &
-  $ taskset 0xfffc python3 client.py &
+  $ python3 worker.py &
+  $ python3 client.py &
 
 
 # Nginx proxypass + force keepalive
 
 2) docker run -it --network host -v `pwd`/async:/app --entrypoint bash nginx:1.15
   $ cp /app/nginx.keepalive.conf /etc/nginx/nginx.conf
-  $ taskset 0x1 nginx -g 'daemon off;'
+  $ nginx -g 'daemon off;'
 3) docker run -it --rm -v `pwd`:/app --network host py
-  $ taskset 0xfffc python3 /app/async/app.py 5000 &
-  $ taskset 0xfffc python3 /app/async/app.py 5001 &
-  $ taskset 0xfffc python3 /app/async/app.py 5002 &
-  $ taskset 0xfffc python3 /app/async/app.py 5003 &
-  $ taskset 0xfffc python3 client.py 8005 &
+  $ python3 /app/async/app.py 5000 &
+  $ python3 /app/async/app.py 5001 &
+  $ python3 /app/async/app.py 5002 &
+  $ python3 /app/async/app.py 5003 &
+  $ python3 client.py 8005 &
 
 
 # Traefik
 
 2) docker run -it --network host -v `pwd`/traefik.toml:/etc/traefik/traefik.toml traefik
 3) docker run -it --rm -v `pwd`:/app --network host py
-  $ taskset 0xfffc python3 /app/async/app.py 5000 &
-  $ taskset 0xfffc python3 /app/async/app.py 5001 &
-  $ taskset 0xfffc python3 /app/async/app.py 5002 &
-  $ taskset 0xfffc python3 /app/async/app.py 5003 &
-  $ taskset 0xfffc python3 client.py 8005 &
+  $ python3 /app/async/app.py 5000 &
+  $ python3 /app/async/app.py 5001 &
+  $ python3 /app/async/app.py 5002 &
+  $ python3 /app/async/app.py 5003 &
+  $ python3 client.py 8005 &
+
+
+# Nats.io
+
+2) docker run -it --network host nats
+3) docker run -it --rm --network host -v `pwd`/nats:/app py
+  $ python3 worker.py &
+  $ python3 client.py &
