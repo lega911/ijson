@@ -19,10 +19,10 @@ enum class Status {
 
 class HttpSender {
 private:
-    Connect *conn;
-    bool _autosend;
+    Connect *conn = NULL;
+    bool _autosend = true;
 public:
-    HttpSender() : conn(NULL), _autosend(true) {};
+    HttpSender() {};
     void set_connect(Connect *n_conn) {this->conn = n_conn;};
     HttpSender *status(const char *status);
     HttpSender *header(const char *key, ISlice &value);
@@ -38,35 +38,25 @@ public:
 
 class Connect {
 private:
-    int _socket_status;  //  1 - read, 2 - write, -1 - closed
-    int _link;
+    int _socket_status = 1;  //  1 - read, 2 - write, -1 - closed
+    int _link = 0;
 public:
     int fd;
     bool keep_alive;
     HttpSender send;
     Buffer send_buffer;
     Loop *loop;
-    int nloop;
-    int need_loop;
-    bool go_loop;
+    int nloop = 0;
+    int need_loop = 0;
+    bool go_loop = false;
     Server *server;
     std::mutex mutex;
 
     Connect(Server *server, int fd) {
-        _socket_status = 1;
         this->server = server;
         this->fd = fd;
-        _link = 0;
-        nloop = 0;
-        need_loop = 0;
-        go_loop = false;
-        worker_mode = false;
         loop = server->loops[0];
         send.set_connect(this);
-
-        http_step = HTTP_START;
-        status = Status::net;
-        client = NULL;
     };
     ~Connect() {
         fd = 0;
@@ -89,7 +79,7 @@ public:
     int raw_send(const void *buf, uint size);
 
 private:
-    int http_step;
+    int http_step = HTTP_START;
     int content_length;
     int http_version;  // 10, 11
     Buffer buffer;
@@ -97,13 +87,13 @@ private:
     Slice header_option;
 public:
     Buffer name;
-    Status status;
+    Status status = Status::net;
     Buffer body;
     Buffer id;
     bool fail_on_disconnect;
     bool noid;
-    bool worker_mode;
-    Connect *client;
+    bool worker_mode = false;
+    Connect *client = NULL;
     Json json;
     Slice info;
 

@@ -149,7 +149,6 @@ QueueLine *Server::get_queue(ISlice key, bool create) {
 /* Loop */
 
 Loop::Loop(Server *server, int nloop) {
-    accept_request = false;
     this->server = server;
     _nloop = nloop;
 };

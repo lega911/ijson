@@ -13,10 +13,10 @@ class Buffer;
 
 class ISlice {
 protected:
-    char *_ptr;
-    int _size;
+    char *_ptr = NULL;
+    int _size = 0;
 public:
-    ISlice() : _ptr(NULL), _size(0) {}
+    ISlice() {}
 
     bool starts_with(const char *s) {
         int i = 0;
@@ -152,7 +152,7 @@ public:
 
 class Buffer : public ISlice {
 protected:
-    int _cap;
+    int _cap = 0;
 
     int _get_cap(int size) {
         int cap = 16;
@@ -166,18 +166,11 @@ protected:
         return cap;
     }
 public:
-    Buffer() : ISlice() {
-        _cap = 0;
-        _size = 0;
-    };
+    Buffer() : ISlice() {};
     Buffer(int size) : ISlice() {
-        _cap = 0;
-        _size = 0;
         resize(size);
     };
     Buffer(const char *s) : ISlice() {
-        _cap = 0;
-        _size = 0;
         add(s);
     };
     ~Buffer() {

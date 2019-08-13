@@ -27,11 +27,11 @@ public:
 class QueueLine {
 public:
     Buffer name;
-    long last_worker;
+    long last_worker = 0;
     std::mutex mutex;
     Queue *queue;
     Buffer info;
-    QueueLine(int n) : last_worker(0) {
+    QueueLine(int n) {
         queue = new Queue[n];
     }
     ~QueueLine() {
@@ -47,13 +47,13 @@ private:
     void _accept();
     bool _valid_ip(u32 ip);
 public:
-    int max_fd;
+    int max_fd = 0;
     Slice host;
-    int log;
-    int port;
-    int threads;
-    bool jsonrpc2;
-    int fake_fd;
+    int log = 0;
+    int port = 8001;
+    int threads = 1;
+    bool jsonrpc2 = false;
+    int fake_fd = 0;
     std::vector<NetFilter> net_filter;
     Connect *connections[MAX_EVENTS];
     Loop **loops;
@@ -63,12 +63,6 @@ public:
     std::vector<char*> _free_list;
 
     Server() : _mapper(this) {
-        log = 0;
-        port = 8001;
-        threads = 1;
-        jsonrpc2 = false;
-        max_fd = 0;
-        fake_fd = 0;
         memset(connections, 0, MAX_EVENTS * sizeof(Connect*));
     };
 
@@ -94,7 +88,7 @@ private:
     void _loop_safe();
     void _close(int fd);
 public:
-    bool accept_request;
+    bool accept_request = false;
     Server *server;
     std::vector<Connect*> dead_connections;
     std::mutex del_lock;

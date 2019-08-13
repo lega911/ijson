@@ -25,9 +25,9 @@ class Server;
 class Lock {
 private:
     Server *server;
-    u64 mask;
+    u64 mask = 0;
 public:
-    Lock(Server *server) : server(server), mask(0) {};
+    Lock(Server *server) : server(server) {};
     ~Lock() {unlock();};
 
     void lock(int n);
