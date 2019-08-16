@@ -2,6 +2,7 @@
 # First step, start counter
 1) ./run_counter.sh
 
+
 # Example for testing RabbitMQ:
 
 2) docker run -it --rm --network host rabbitmq
@@ -47,16 +48,23 @@
   $ python3 client.py &
 
 
-# Nginx proxypass + force keepalive
+# Nginx
 
-2) docker run -it --network host -v `pwd`/async:/app --entrypoint bash nginx:1.15
-  $ cp /app/nginx.keepalive.conf /etc/nginx/nginx.conf
-  $ nginx -g 'daemon off;'
+2.1) docker run -it --network host -v `pwd`/async/nginx.conf:/etc/nginx/nginx.conf:ro nginx:1.17
+2.2) docker run -it --network host -v `pwd`/async/nginx.keepalive.conf:/etc/nginx/nginx.conf:ro nginx:1.17
 3) docker run -it --rm -v `pwd`:/app --network host py
   $ python3 /app/async/app.py 5000 &
   $ python3 /app/async/app.py 5001 &
   $ python3 /app/async/app.py 5002 &
   $ python3 /app/async/app.py 5003 &
+  $ python3 client.py 8005 &
+
+
+# Nginx + uwsgi
+
+2) docker run -it --network host -v `pwd`/uwsgi/nginx.conf:/etc/nginx/nginx.conf:ro nginx:1.17
+3) docker run -it --rm -v `pwd`:/app --network host py
+  $ uwsgi --plugin python3 --socket :5000 --wsgi-file /app/uwsgi/app.py --processes=4 --disable-logging &
   $ python3 client.py 8005 &
 
 
@@ -68,7 +76,7 @@
   $ python3 /app/async/app.py 5001 &
   $ python3 /app/async/app.py 5002 &
   $ python3 /app/async/app.py 5003 &
-  $ python3 client.py 8005 &
+  $ python3 client.py 8001 &
 
 
 # Nats.io
