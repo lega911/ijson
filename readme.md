@@ -3,9 +3,9 @@
 ![Scheme](files/ijson.png)
 
 #### Benchmark
-![Performance](files/performance.png)
+![Performance](files/performance9.png)
 
-<sup>[Multi-core result is here](files/performance_mc.png)</sup>
+<sup>[Multi-core result is here](files/performance9mc.png)</sup>
 
 ![Memory usage](files/memory_usage.png)
 
