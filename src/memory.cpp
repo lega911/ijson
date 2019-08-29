@@ -14,10 +14,6 @@
         void *ptr = malloc(size);
         return ptr;
     }
-    void *_realloc(void *ptr, u32 size) {
-        ptr = realloc(ptr, size);
-        return ptr;
-    }
     void _free(void *ptr) {
         count--;
         free(ptr);

@@ -13,7 +13,7 @@ typedef int64_t i64;
 #ifdef DEBUG
     i32 get_memory_allocated();
     void *_malloc(u32 size);
-    void *_realloc(void *ptr, u32 size);
+    #define _realloc realloc
     void _free(void *ptr);
 #else
     #define _malloc malloc

@@ -52,7 +52,7 @@ void Mapper::add(ISlice name, u16 value) {
             break;
         }
 
-        if(a < 32 || a > 128) throw "Wrong char";
+        if(a < 32 || a >= 128) throw "Wrong char";
         a -= 32;
 
         next = step->k[a];
@@ -97,7 +97,7 @@ u16 Mapper::find(ISlice name) {
         }
         u16 a = name.ptr()[i];
 
-        if(a < 32 || a > 128) return std;
+        if(a < 32 || a >= 128) return std;
         a -= 32;
 
         next = step->k[a];
