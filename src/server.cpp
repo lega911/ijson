@@ -60,7 +60,6 @@ bool Server::_valid_ip(u32 ip) {
 
 
 void Server::_accept() {
-    int balance = 0;
     while (true) {
         struct sockaddr_in peer_addr;
         socklen_t peer_addr_len = sizeof(peer_addr);
@@ -89,9 +88,7 @@ void Server::_accept() {
         if(fd > max_fd) max_fd = fd;
         if(log & 16) std::cout << ltime() << "connect " << fd << " " << (void*)conn << std::endl;
 
-        loops[balance]->accept(conn);
-        balance++;
-        if(balance >= threads) balance = 0;
+        loops[active_loop]->accept(conn);
     }
 };
 

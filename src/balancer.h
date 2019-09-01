@@ -12,6 +12,7 @@ private:
     std::thread _thread;
     Server *server;
     void _start();
+    void _free_memory();
 public:
     Balancer(Server *server) : server(server) {};
     void start();

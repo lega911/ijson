@@ -47,6 +47,7 @@ private:
     void _accept();
     bool _valid_ip(u32 ip);
 public:
+    int active_loop = 0;
     int max_fd = 0;
     Slice host;
     int log = 0;
@@ -98,6 +99,7 @@ public:
     void accept(Connect *conn);
     void set_poll_mode(int fd, int status);
     void wake();
+    inline auto get_id() {return _thread.native_handle();}
 
 // rpc
 private:
