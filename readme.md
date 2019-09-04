@@ -1,13 +1,9 @@
-### ijson - inverted json (inverted jsonrpc proxy)
-
-![Scheme](files/ijson.png)
+### Inverted Json (inverted jsonrpc proxy)
 
 #### Benchmark
 ![Performance](files/performance9.png)
 
 <sup>[Multi-core result is here](files/performance9mc.png)</sup>
-
-![Memory usage](files/memory_usage.png)
 
 #### Description
 ijson helps to make RPC communication via http where both clients and workers are http-clients.
