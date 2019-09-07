@@ -1,33 +1,23 @@
-### Inverted Json (inverted jsonrpc proxy)
+### Inverted Json
+Inverted Json is a job server which helps you to organize RPC communication between clients and workers. It helps to save time and resources.
+* It's **very fast**, it's built with C/C++ and epoll, it's **7+ time faster** than RabbitMQ for RPC ([look at benchmark](#benchmark)).
+* It's **supported by all languages/frameworks**, because it works via http.
+* It **uses much less of memory** (and CPU), less than 50+ time than RabbitMQ ([article on medium](https://medium.com/@lega911/rpc-benchmark-and-inverted-json-b5ce0bf587be)).
+* Docker image is just **2.6Mb** (slim version)
+* API is easy and compact (look at examples, quickstart will be soon)
+* It's **a single point of access**: [Client] -> [Inverted Json] <- [Worker] (clients and workers connect to Inverted Json), to simplify the configuration for projects.
 
 #### Benchmark
+<a id="benchmark"></a>
 ![Performance](files/performance9.png)
 
 <sup>[Multi-core result is here](files/performance9mc.png)</sup>
 
-#### Description
-ijson helps to make RPC communication via http where both clients and workers are http-clients.
-* It's fast - it based on c++ and epoll
-* JsonRPC2 partly supported
-* Able to send binary data (not only json)
-* Multimethods
-* Able to send command on certain worker
-* Using Keep-Alive to detect if worker is ok
-* Docker image ~9Mb (proxy itself is ~100kb)
+#### Try Inverted Json in 3 min
+![Example](files/exaple.gif)
 
-#### Start ijson
-``` bash
-docker run -i -p 8001:8001 lega911/ijson
-```
+[read an article](https://medium.com/@lega911/rpc-benchmark-and-inverted-json-b5ce0bf587be)
 
-#### Options
-``` bash
-> ijson
-  --host 0.0.0.0:8001  # bind host:port
-  --filter 192.168.0.0/24 --filter 70.0.0.0/8  # ip filters for clients
-  --log 3  # mask for logs
-  --jsonrpc2
-```
 
 #### Example with curl (client + worker)
 ``` bash
