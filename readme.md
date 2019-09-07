@@ -16,6 +16,14 @@ Inverted Json is a job server which helps you to organize RPC communication betw
 #### Try Inverted Json in 5 min
 ![Example](files/example.gif)
 
+<sup>
+Here we:<br/>
+1. Start Inverted Json<br/>
+2. A worker publishes a command<br/>
+3. A client invokes the command<br/>
+4. The worker responds to the client<br/>
+</sup>
+
 [read more, an article](https://medium.com/@lega911/rpc-benchmark-and-inverted-json-b5ce0bf587be)
 
 
