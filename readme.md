@@ -2,7 +2,7 @@
 Inverted Json is a job server which helps you to organize RPC communication between clients and workers. It helps to save time and resources.
 * It's **very fast**, it's built with C/C++ and epoll, it's **7+ time faster** than RabbitMQ for RPC ([look at benchmark](#benchmark)).
 * It's **supported by all languages/frameworks**, because it works via http.
-* It **uses much less of memory** (and CPU), less than 50+ time than RabbitMQ ([article on medium](https://medium.com/@lega911/rpc-benchmark-and-inverted-json-b5ce0bf587be)).
+* It **uses much less of memory** (and CPU), less than 50+ time than RabbitMQ ([memory usage](files/mem9.png)).
 * Docker image is just **2.6Mb** (slim version)
 * API is easy and compact (look at examples, quickstart will be soon)
 * It's **a single point of access**: [Client] -> [Inverted Json] <- [Worker] (clients and workers connect to Inverted Json), to simplify the configuration for projects.
@@ -11,9 +11,9 @@ Inverted Json is a job server which helps you to organize RPC communication betw
 <a id="benchmark"></a>
 ![Performance](files/performance9.png)
 
-<sup>[Multi-core result is here](files/performance9mc.png)</sup>
+<sup>[Memory usage](files/mem9.png), [CPU usage](files/cpu9.png), [Multi-core result](files/performance9mc.png)</sup>
 
-#### Try Inverted Json in 3 min
+#### Try Inverted Json in 5 min
 ![Example](files/example.gif)
 
 [read more, an article](https://medium.com/@lega911/rpc-benchmark-and-inverted-json-b5ce0bf587be)
