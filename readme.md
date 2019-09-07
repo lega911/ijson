@@ -19,17 +19,22 @@ Inverted Json is a job server which helps you to organize RPC communication betw
 [read more, an article](https://medium.com/@lega911/rpc-benchmark-and-inverted-json-b5ce0bf587be)
 
 
+#### Start ijson
+``` bash
+docker run -i -p 8001:8001 lega911/ijson
+```
+
 #### Example with curl (client + worker)
 ``` bash
 # 1. a worker publishes rpc command
-curl -d '{"name": "/test/command"}' localhost:8001/rpc/add
+curl localhost:8001/rpc/add -d '{"name": "/test/command"}'
 
 # 2. a client invokes the command
-curl -d '{"id": 123, "params": "test data"}' localhost:8001/test/command
+curl localhost:8001/test/command -d '{"id": 123, "params": "test data"}'
 
 # the worker receives {"id": 123, "params": "test data"}
 # 3. and sends response with the same id
-curl -d '{"id": 123, "result": "data received"}' localhost:8001/rpc/result
+curl localhost:8001/rpc/result -d '{"id": 123, "result": "data received"}'
 
 # client receives {"id": 123, "result": "data received"}
 ```
