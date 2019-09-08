@@ -15,4 +15,4 @@ docker:
 docker_slim:
 	g++ src/*.cpp -luuid -pthread -std=c++17 -DDOCKER -O2 -o docker-slim/ijson -static
 test:
-	cd tests; pytest37 main.py
+	cd tests; pytest37 -v -s main.py

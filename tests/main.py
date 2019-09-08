@@ -4,10 +4,13 @@ import threading
 import requests
 
 
+L = 'http://localhost:8001'
+TIMEOUT = 5
+
 def post(path, *a, **kw):
     if 'timeout' not in kw:
-        kw['timeout'] = 5
-    return requests.post('http://localhost:8001' + path, *a, **kw)
+        kw['timeout'] = TIMEOUT
+    return requests.post(L + path, *a, **kw)
 
 
 def test_default():
@@ -242,3 +245,59 @@ def test5():
     th.join()
     assert response.status_code == 200
     assert response.json()['result'] == 'ok'
+
+
+def run(delay):
+    def wrapper(fn):
+        def wr():
+            if delay:
+                time.sleep(delay)
+            fn()
+        th = threading.Thread(target=wr)
+        th.start()
+    return wrapper
+
+
+def test6_priority():
+    result = []
+
+    @run(0)
+    def worker():
+        worker = requests.Session()
+        task = worker.post(L + '/rpc/add', json={'name': 'test6', 'option': 'no_id'}).json()
+        worker.post(L + '/rpc/result', json={'result': task['request']}, timeout=TIMEOUT)
+
+    time.sleep(0.1)
+    response = post('/test6', json={'request': 0}).json()
+    result.append(response['result'])
+
+    def request(delay, value, priority=0):
+        @run(delay)
+        def send():
+            headers = {}
+            if priority:
+                headers['Priority'] = str(priority)
+            response = post('/test6', json={'request': value}, headers=headers).json()
+            result.append(response['result'])
+
+    request(0.1, 1)
+    request(0.2, 2, 5)
+    request(0.3, 3, -5)
+    request(0.4, 4, 3)
+    request(0.5, 5, -3)
+    request(0.6, 6, 1)
+    request(0.7, 7, -1)
+    request(0.8, 8)
+    request(0.9, 9, 4)
+
+    time.sleep(1.5)
+
+    details = post('/rpc/details').json()
+    assert details['test6']['clients'] == 9
+
+    worker = requests.Session()
+    for _ in range(9):
+        task = worker.post(L + '/rpc/add', json={'name': 'test6', 'option': 'no_id'}, timeout=TIMEOUT).json()
+        worker.post(L + '/rpc/result', json={'result': task['request']})
+    time.sleep(0.5)
+    assert result == [0, 2, 9, 4, 6, 1, 8, 7, 5, 3]

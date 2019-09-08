@@ -93,6 +93,7 @@ public:
     bool fail_on_disconnect;
     bool noid;
     bool worker_mode = false;
+    int priority = 0;
     Connect *client = NULL;
     Json json;
     Slice info;

@@ -585,7 +585,16 @@ int Loop::client_request(ISlice name, Connect *client) {
             worker->status = Status::net;
         }
     } else {
-        ql->queue[_nloop].clients.push_back(client);
+        bool inserted = false;
+        auto *clients = &ql->queue[_nloop].clients;
+        for(auto it=clients->crbegin(); it!=clients->crend(); it++) {
+            if(client->priority <= (*it)->priority) {
+                clients->insert(it.base(), client);
+                inserted = true;
+                break;
+            }
+        }
+        if(!inserted) clients->push_front(client);
         client->link();
     };
 

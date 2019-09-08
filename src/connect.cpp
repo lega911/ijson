@@ -137,6 +137,7 @@ void Connect::on_recv(char *buf, int size) {
             json.reset();
             if(!worker_mode) name.clear();
             content_length = 0;
+            priority = 0;
             if(status != Status::worker_wait_result) {
                 if(worker_mode) THROW("Wrong status for worker");
                 fail_on_disconnect = false;
@@ -203,6 +204,9 @@ void Connect::read_header(Slice &data) {
     } else if(data.starts_with("Option: ")) {
         data.remove(8);
         header_option = data;
+    } else if(data.starts_with("Priority: ")) {
+        data.remove(10);
+        priority = data.atoi();
     }
 }
 
