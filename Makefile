@@ -1,7 +1,7 @@
 .PHONY: debug release info build clean test docker
 
 info:
-	echo debug release
+	@echo debug release
 debug:
 	g++ src/*.cpp -luuid -pthread -std=c++17 -DDEBUG -rdynamic -o ijson.debug
 release:
