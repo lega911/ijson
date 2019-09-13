@@ -88,6 +88,9 @@ private:
     void _loop();
     void _loop_safe();
     void _close(int fd);
+    void _delete_connections();
+    void _migrate_send();
+    void _migrate_recv();
 public:
     bool accept_request = false;
     Server *server;

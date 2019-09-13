@@ -259,54 +259,62 @@ void Loop::_loop() {
             if(conn->go_loop) need_to_migrate = true;
         }
 
-        if(need_to_migrate) {
-            Lock lock = server->autolock(_nloop);
+        if(need_to_migrate) _migrate_send();
+        _delete_connections();
+        _migrate_recv();
+    }
+}
 
-            for (int i = 0; i <= server->max_fd; i++) {
-                Connect* conn = server->connections[i];
-                if(!conn) continue;
-                if(conn->nloop != _nloop) continue;
-                if(!conn->go_loop || conn->need_loop == _nloop) continue;
-                conn->go_loop = false;
-                if(conn->is_closed()) continue;
-                set_poll_mode(conn->fd, -1);
-                if(server->log & 64) std::cout << "migrate fd " << conn->fd << ", " << _nloop << " -> " << conn->need_loop << std::endl;
-                auto loop = server->loops[conn->need_loop];
-                loop->accept(conn);
 
-                if(conn->status == Status::migration) {
-                    loop->accept_request = true;
-                    loop->wake();
-                }
-            }
+void Loop::_delete_connections() {
+    if(!dead_connections.size()) return;
+    if(!del_lock.try_lock()) return;
+
+    for(Connect *conn : dead_connections) {
+        if(conn->get_link() == 0) {
+            if(server->log & 16) std::cout << ltime() << "delete connection " << (void*)conn << std::endl;
+            delete conn;
         }
+    }
+    dead_connections.clear();
+    del_lock.unlock();
+}
 
-        // delete dead connections
-        if(dead_connections.size()) {
-            if(del_lock.try_lock()) {
-                for(Connect *conn : dead_connections) {
-                    if(conn->get_link() == 0) {
-                        if(server->log & 16) std::cout << ltime() << "delete connection " << (void*)conn << std::endl;
-                        delete conn;
-                    }
-                }
-                dead_connections.clear();
-                del_lock.unlock();
-            }
+
+void Loop::_migrate_send() {
+    Lock lock = server->autolock(_nloop);
+
+    for (int i = 0; i <= server->max_fd; i++) {
+        Connect* conn = server->connections[i];
+        if(!conn) continue;
+        if(conn->nloop != _nloop) continue;
+        if(!conn->go_loop || conn->need_loop == _nloop) continue;
+        conn->go_loop = false;
+        if(conn->is_closed()) continue;
+        set_poll_mode(conn->fd, -1);
+        if(server->log & 64) std::cout << "migrate fd " << conn->fd << ", " << _nloop << " -> " << conn->need_loop << std::endl;
+        auto loop = server->loops[conn->need_loop];
+        loop->accept(conn);
+
+        if(conn->status == Status::migration) {
+            loop->accept_request = true;
+            loop->wake();
         }
+    }
+}
 
-        if(accept_request) {
-            Lock lock = server->autolock(_nloop);
-            accept_request = false;
-            for (int i = 0; i <= server->max_fd; i++) {
-                Connect* conn = server->connections[i];
-                if(!conn || conn->nloop != _nloop) continue;
-                if(conn->status != Status::migration) continue;
-                if(conn->is_closed()) continue;
 
-                client_request(conn->name, conn);
-            }
-        }
+void Loop::_migrate_recv() {
+    if(!accept_request) return;
+    Lock lock = server->autolock(_nloop);
+    accept_request = false;
+    for (int i = 0; i <= server->max_fd; i++) {
+        Connect* conn = server->connections[i];
+        if(!conn || conn->nloop != _nloop) continue;
+        if(conn->status != Status::migration) continue;
+        if(conn->is_closed()) continue;
+
+        client_request(conn->name, conn);
     }
 }
 
