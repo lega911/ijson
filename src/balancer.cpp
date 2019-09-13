@@ -38,6 +38,7 @@ void Balancer::_start() {
         usleep(500'000);  // 500ms
         _free_memory();
 
+        #ifndef NOBALANCER
         if(threads > 1) {
             // balance
             u64 now = get_ntime();
@@ -76,6 +77,7 @@ void Balancer::_start() {
                 if(log) std::cout << "Active loop: " << active << std::endl;
             }
         }
+        #endif
     };
 
     delete[] used;
