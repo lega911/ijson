@@ -36,6 +36,7 @@ int main(int argc, char** argv) {
     #ifdef DEBUG
         catch_fatal();
     #endif
+    generator_init();
 
     Server server;
     server.log = 15;

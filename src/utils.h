@@ -33,3 +33,7 @@ public:
     void lock(int n);
     void unlock();
 };
+
+
+void generator_init();
+void generate_id(Buffer &r);

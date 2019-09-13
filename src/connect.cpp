@@ -2,7 +2,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <string.h>
-#include <uuid/uuid.h>
 #include "connect.h"
 
 
@@ -397,12 +396,8 @@ void Connect::rpc_add() {
 }
 
 void Connect::gen_id() {
-    id.resize(36, 36);
-    uuid_t uuid;
-    uuid_generate_time_safe(uuid);
-    uuid_unparse_lower(uuid, id.ptr());
+    generate_id(id);
 }
-
 
 void Connect::send_details() {
     Buffer res(256);
