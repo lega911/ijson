@@ -38,23 +38,12 @@ void Server::_listen() {
     int opt = 1;
     if(setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) THROW("setsockopt");
 
-#ifdef _KQUEUE  // FIXME
-    struct sockaddr_in serv_addr;
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
-    serv_addr.sin_port = htons(port);
-
-    int r = bind(_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-#else
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = inet_addr(host.as_string().c_str());
     serv_addr.sin_port = htons(port);
-
     int r = bind(_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-#endif
-
     if(r < 0) THROW("Error on binding, port is busy?");  // fix vscode highlighting
 
     if(listen(_fd, 64) < 0) THROW("ERROR on listen");
