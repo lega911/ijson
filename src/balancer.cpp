@@ -38,7 +38,7 @@ void Balancer::_start() {
         usleep(500'000);  // 500ms
         _free_memory();
 
-        #ifndef NOBALANCER
+        #ifndef _NOBALANCER
         if(threads > 1) {
             // balance
             u64 now = get_ntime();

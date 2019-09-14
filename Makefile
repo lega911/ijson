@@ -6,8 +6,10 @@ debug:
 	g++ src/*.cpp -pthread -std=c++17 -DDEBUG -rdynamic -o ijson.debug
 release:
 	g++ src/*.cpp -pthread -std=c++17 -O2 -o ijson
-release_nobalancer:
-	g++ src/*.cpp -pthread -std=c++17 -O2 -DNOBALANCER -o ijson
+release_freebsd:
+	g++ src/*.cpp -pthread -std=c++17 -O2 -D_KQUEUE -o ijson
+release_macos:
+	g++ src/*.cpp -pthread -std=c++17 -O2 -D_KQUEUE -D_NOBALANCER -o ijson
 build: debug release
 clean:
 	rm -f ijson ijson.debug

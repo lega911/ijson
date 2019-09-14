@@ -6,7 +6,6 @@
 #include <netdb.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys/epoll.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
@@ -15,8 +14,14 @@
 #include "connect.h"
 #include "balancer.h"
 
-
-typedef struct epoll_event eitem;
+#ifdef _KQUEUE
+    #include <netinet/in.h>
+    #include <sys/event.h>
+    typedef struct kevent eitem;
+#else
+    #include <sys/epoll.h>
+    typedef struct epoll_event eitem;
+#endif
 
 
 void unblock_socket(int fd) {
@@ -33,6 +38,14 @@ void Server::_listen() {
     int opt = 1;
     if(setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) THROW("setsockopt");
 
+#ifdef _KQUEUE  // FIXME
+    struct sockaddr_in serv_addr;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+    serv_addr.sin_port = htons(port);
+
+    int r = bind(_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+#else
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -40,6 +53,8 @@ void Server::_listen() {
     serv_addr.sin_port = htons(port);
 
     int r = bind(_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+#endif
+
     if(r < 0) THROW("Error on binding, port is busy?");  // fix vscode highlighting
 
     if(listen(_fd, 64) < 0) THROW("ERROR on listen");
@@ -157,21 +172,32 @@ void Loop::start() {
 
 
 void Loop::accept(Connect *conn) {
-    eitem event = {0};
-    event.data.fd = conn->fd;
-
     conn->nloop = conn->need_loop = _nloop;
     conn->loop = this;
 
     int st = conn->get_socket_status();
     if(st == -1) THROW("accept: connection is closed");
+
+    eitem event = {0};
+#ifdef _KQUEUE
+    EV_SET(&event, conn->fd, EVFILT_READ, (st & 1) ? EV_ADD | EV_ENABLE : EV_DISABLE, 0, 0, NULL);
+    if(kevent(epollfd, &event, 1, NULL, 0, NULL) == -1) THROW("kqueue change read error");
+
+    if(st & 2) {
+        EV_SET(&event, conn->fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, NULL);
+        if(kevent(epollfd, &event, 1, NULL, 0, NULL) == -1) THROW("kqueue change write error");
+    }
+#else
+    event.data.fd = conn->fd;
     if(st & 1) event.events |= EPOLLIN;
     if(st & 2) event.events |= EPOLLOUT;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, conn->fd, &event) < 0) THROW("epoll_ctl EPOLL_CTL_ADD");
+#endif
 }
 
 
 void Loop::wake() {
+#ifndef _KQUEUE  // TODO: fix for kqueue
     if(!server->fake_fd) {
         LOCK _l(server->global_lock);
         if(!server->fake_fd) server->fake_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -181,6 +207,7 @@ void Loop::wake() {
     eitem event = {0};
     event.data.fd = server->fake_fd;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, server->fake_fd, &event) < 0) THROW("epoll_ctl EPOLL_CTL_ADD");
+#endif
 }
 
 
@@ -194,6 +221,84 @@ void Loop::_loop_safe() {
     }
 }
 
+#ifdef _KQUEUE
+void Loop::_loop() {
+    epollfd = kqueue();
+    if(epollfd == -1) THROW("kqueue init error");
+
+    eitem events[MAX_EVENTS];
+    char buf[BUF_SIZE];
+    while(true) {
+        int nready = kevent(epollfd, NULL, 0, events, MAX_EVENTS, NULL);
+        if(nready < 1) {
+            if(server->log & 1) std::cout << ltime() << "kqueue wait error: " << errno << std::endl;
+            continue;
+        }
+
+        bool need_to_migrate = false;
+        for (int i = 0; i < nready; i++) {
+            int fd = events[i].ident;
+
+            if(fd == server->fake_fd) {
+                set_poll_mode(fd, -1);
+                continue;
+            }
+
+            if(events[i].flags & EV_EOF) {
+                _close(fd);
+                continue;
+            }
+
+            if (events[i].flags & EV_ERROR) {
+                if(server->log & 1) std::cout << ltime() << "connection error: " << strerror(events[i].data) << std::endl;
+                continue;
+            }
+
+            Connect* conn = server->connections[fd];
+            if(conn->nloop != _nloop) {
+                if(server->log & 1) std::cout << "loop warning: connection is in wrong loop\n";
+                continue;
+            }
+
+            if(events[i].filter == EVFILT_READ) {
+                int size = recv(fd, buf, BUF_SIZE, 0);
+                if(size == 0) {
+                    _close(fd);
+                } else if(size < 0) {
+                    if(errno == EAGAIN) {  // EINTR ?
+                        // data is not ready yet
+                        continue;
+                    } else {
+                        THROW("recv error");
+                    }
+                } else {
+                    try {
+                        conn->on_recv(buf, size);
+                    } catch (const Exception &e) {
+                        if(server->log & 2) e.print("Exception in on_recv");
+                        conn->close();
+                    }
+                    if(conn->is_closed()) _close(fd);
+                }
+            } else if(events[i].filter == EVFILT_WRITE) {
+                try {
+                    conn->on_send();
+                } catch (const Exception &e) {
+                    if(server->log & 2) e.print("Exception in on_send");
+                    conn->close();
+                }
+                if(conn->is_closed()) _close(fd);
+            }
+
+            if(conn->go_loop) need_to_migrate = true;
+        }
+
+        if(need_to_migrate) _migrate_send();
+        _delete_connections();
+        _migrate_recv();
+    }
+}
+#else
 void Loop::_loop() {
     epollfd = epoll_create1(0);
     if(epollfd < 0) THROW("epoll_create1");
@@ -264,6 +369,7 @@ void Loop::_loop() {
         _migrate_recv();
     }
 }
+#endif
 
 
 void Loop::_delete_connections() {
@@ -319,9 +425,25 @@ void Loop::_migrate_recv() {
 }
 
 
+#ifdef _KQUEUE
+void Loop::set_poll_mode(int fd, int status) {
+    eitem event = {0};
+    if(status == -1) {
+        EV_SET(&event, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+        if(kevent(epollfd, &event, 1, NULL, 0, NULL) == -1) THROW("kqueue delete read error");
+        return;
+    }
+
+    EV_SET(&event, fd, EVFILT_READ, (status & 1) ? EV_ADD | EV_ENABLE : EV_DISABLE, 0, 0, NULL);
+    if(kevent(epollfd, &event, 1, NULL, 0, NULL) == -1) THROW("kqueue change read error");
+
+    EV_SET(&event, fd, EVFILT_WRITE, (status & 2) ? EV_ADD | EV_ENABLE : EV_DISABLE, 0, 0, NULL);
+    if(kevent(epollfd, &event, 1, NULL, 0, NULL) == -1) THROW("kqueue change write error");
+}
+#else
 void Loop::set_poll_mode(int fd, int status) {
     if(status == -1) {
-        if(epoll_ctl(this->epollfd, EPOLL_CTL_DEL, fd, NULL) < 0) THROW("epoll_ctl EPOLL_CTL_DEL");
+        if(epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL) < 0) THROW("epoll_ctl EPOLL_CTL_DEL");
         return;
     }
 
@@ -330,8 +452,9 @@ void Loop::set_poll_mode(int fd, int status) {
     if(status & 1) event.events |= EPOLLIN;
     if(status & 2) event.events |= EPOLLOUT;
 
-    if(epoll_ctl(this->epollfd, EPOLL_CTL_MOD, fd, &event) < 0) THROW("epoll_ctl EPOLL_CTL_MOD");
+    if(epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &event) < 0) THROW("epoll_ctl EPOLL_CTL_MOD");
 }
+#endif
 
 
 void Loop::_close(int fd) {
