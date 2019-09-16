@@ -10,7 +10,7 @@
 #include "mapper.h"
 
 
-#define MAX_EVENTS 16384
+#define MAX_EVENTS 256
 #define BUF_SIZE 16384
 
 class Loop;
