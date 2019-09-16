@@ -537,7 +537,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
                     }
                 }
                 if(id.empty()) {
-                    client->gen_id();
+                    generate_id(client->id);
                     id = client->id;
                 };
             }
@@ -676,7 +676,7 @@ int Loop::client_request(ISlice name, Connect *client) {
                 }
             }
             if(id.empty()) {
-                client->gen_id();
+                generate_id(client->id);
                 id.set(client->id);
             }
             std::string sid = id.as_string();

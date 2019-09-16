@@ -104,7 +104,5 @@ public:
     void send_help();
     void rpc_add();
     void rpc_worker();
-
     void header_completed();
-    void gen_id();
 };

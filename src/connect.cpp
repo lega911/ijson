@@ -395,10 +395,6 @@ void Connect::rpc_add() {
     loop->add_worker(name, this);
 }
 
-void Connect::gen_id() {
-    generate_id(id);
-}
-
 void Connect::send_details() {
     Buffer res(256);
     res.add("{\"_version\":\"");
