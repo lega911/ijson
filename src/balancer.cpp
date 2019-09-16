@@ -6,8 +6,8 @@
 #include "connect.h"
 
 
-void Balancer::start() {
-    _thread = std::thread(&Balancer::_start, this);
+void Service::start() {
+    _thread = std::thread(&Service::_start, this);
 }
 
 u64 get_ntime() {
@@ -16,7 +16,7 @@ u64 get_ntime() {
     return (u64)spec.tv_sec * 1'000'000'000 + (u64)spec.tv_nsec;
 }
 
-void Balancer::_free_memory() {
+void Service::_free_memory() {
     if(!server->_free_list.size()) return;
 
     server->_free_lock.lock();
@@ -27,7 +27,7 @@ void Balancer::_free_memory() {
     for(auto const &ptr : v) _free(ptr);
 }
 
-void Balancer::_start() {
+void Service::_start() {
     int threads = server->threads;
     bool log = server->log & 64;
     u64 *used = new u64[threads]();

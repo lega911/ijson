@@ -113,8 +113,8 @@ void Server::start() {
         loops[i] = loop;
     }
 
-    Balancer balancer(this);
-    balancer.start();
+    Service service(this);
+    service.start();
 
     _accept();
 };
