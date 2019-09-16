@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "connect.h"
-#include "balancer.h"
+#include "service.h"
 
 #ifdef _KQUEUE
     #include <netinet/in.h>
