@@ -79,7 +79,8 @@ Slice Json::read_value() {
     int start = index;
     char a;
     bool is_number = true;
-    for(;a = next();) {
+    while(true) {
+        a = next();
         if(a == ' ' || a == ',' || a == '}' || a == '\n' || a == '\r') break;
         if(a < '0' || a > '9') is_number = false;
         if(!is_number && (index - start > 5)) throw error::InvalidData();
