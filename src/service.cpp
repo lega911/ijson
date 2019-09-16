@@ -33,10 +33,16 @@ void Service::_start() {
     u64 *used = new u64[threads]();
     int *cpu = new int[threads]();
     u64 prev_time = get_ntime();
+    i16 clean_tasks = 2;
 
     while(true) {
         usleep(500'000);  // 500ms
         _free_memory();
+
+        if(--clean_tasks <= 0) {
+            clean_tasks = 2;
+            _clean_dead_tasks();
+        }
 
         #ifndef _NOBALANCER
         if(threads > 1) {
@@ -82,4 +88,29 @@ void Service::_start() {
 
     delete[] used;
     delete[] cpu;
+};
+
+
+void Service::_clean_dead_tasks() {
+    LOCK _l(server->global_lock);
+    for(const auto &ql : server->_queue_list) {
+        if(!ql->mutex.try_lock()) continue;
+
+        for(int nloop=0; nloop < server->threads; nloop++) {
+            Queue *q = &ql->queue[nloop];
+            if(!q->workers.size()) continue;
+
+            auto it=q->workers.begin();
+            while(it != q->workers.end()) {
+                Connect *conn = *it;
+                if(conn->is_closed() || conn->status != Status::worker_wait_job) {
+                    it = q->workers.erase(it);
+                    conn->unlink();
+                } else {
+                    it++;
+                }
+            }
+        }
+        ql->mutex.unlock();
+    }
 };

@@ -13,6 +13,7 @@ private:
     Server *server;
     void _start();
     void _free_memory();
+    void _clean_dead_tasks();
 public:
     Service(Server *server) : server(server) {};
     void start();
