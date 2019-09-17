@@ -98,13 +98,23 @@ void Service::_clean_dead_tasks() {
 
         for(int nloop=0; nloop < server->threads; nloop++) {
             Queue *q = &ql->queue[nloop];
-            if(!q->workers.size()) continue;
 
             auto it=q->workers.begin();
             while(it != q->workers.end()) {
                 Connect *conn = *it;
                 if(conn->is_closed() || conn->status != Status::worker_wait_job) {
                     it = q->workers.erase(it);
+                    conn->unlink();
+                } else {
+                    it++;
+                }
+            }
+
+            it=q->clients.begin();
+            while(it != q->clients.end()) {
+                Connect *conn = *it;
+                if(conn->is_closed() || conn->status != Status::client_wait_result) {
+                    it = q->clients.erase(it);
                     conn->unlink();
                 } else {
                     it++;
