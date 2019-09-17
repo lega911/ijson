@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <string.h>
 #include "connect.h"
+#include <bits/stdc++.h> 
 
 
 void Connect::unlink() {
@@ -431,20 +432,27 @@ void Connect::send_details() {
     send.status("200 OK")->done(res);
 }
 
+
 void Connect::send_help() {
     Buffer res(256);
     res.add("ijson ");
     res.add(ijson_version);
     res.add("\n\nrpc/add     {name, [option], [info]}\nrpc/result  {[id]}\nrpc/worker  {name, [info]}\nrpc/details\nrpc/help\n\n");
     LOCK _l(server->global_lock);
-    for(const auto &ql : server->_queue_list) {
+    std::vector<QueueLine*> list;
+    for(const auto &ql : server->_queue_list) list.push_back(ql);
+    std::sort(list.begin(), list.end(), [](const auto& l,const auto& r) {
+        return l->name.compare(r->name) < 0;
+    });
+
+    for(const auto &ql : list) {
         res.add(ql->name);
 
         for(int i=ql->name.size();i<20;i++) res.add(" ", 1);
         res.add("  x ");
 
         int worker_count = 0;
-        for(int i=0;i<server->threads;i++) worker_count += ql->queue[i].workers.size();
+        for(int i=0;i<server->threads;i++) worker_count += ql->queue[i].workers.size() - ql->queue[i].clients.size();
         res.add_number(worker_count);
         if(!ql->info.empty()) {
             res.add("  ");

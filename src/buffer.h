@@ -40,6 +40,18 @@ public:
         return i == _size;
     }
 
+    int compare(ISlice &s) {
+        int i = 0;
+        int d;
+        for(; i<size(); i++) {
+            if(i >= s.size()) return 1;
+            d = ptr()[i] - s.ptr()[i];
+            if(d) return d;
+        }
+        if(i < s.size()) return -1;
+        return 0;
+    }
+
     inline bool operator==(const char *s) {return equal(s);}
     inline bool operator!=(const char *s) {return !equal(s);}
     inline bool empty() {return size() == 0;}
