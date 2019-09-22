@@ -17,10 +17,22 @@ class Loop;
 class Connect;
 
 
+class Message {
+public:
+    int priority = 0;
+    Connect *conn = NULL;
+    Buffer *buf = NULL;
+
+    void attach_client(Connect *n_conn);
+    void attach_buffer(Buffer *n_buf);
+    ~Message();
+};
+
+
 class Queue {
 public:
     std::deque<Connect*> workers;
-    std::deque<Connect*> clients;
+    std::deque<Message*> clients;
 };
 
 

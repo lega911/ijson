@@ -24,7 +24,7 @@ public:
     HttpSender() {};
     void set_connect(Connect *n_conn) {this->conn = n_conn;};
     HttpSender *status(const char *status);
-    HttpSender *header(const char *key, ISlice &value);
+    HttpSender *header(const char *key, const ISlice &value);
     void done(ISlice &body);
     void done(int error);
     void done();
@@ -93,6 +93,7 @@ public:
     Buffer id;
     bool fail_on_disconnect;
     bool noid;
+    bool no_response = false;
     bool worker_mode = false;
     int priority = 0;
     Connect *client = NULL;

@@ -497,7 +497,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 
     if(!worker->info.empty()) ql->info.set(worker->info);
 
-    Connect *client = NULL;
+    Message *msg = NULL;
     int result;
 
     ql->last_worker = get_time_sec();
@@ -511,13 +511,15 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         q = &ql->queue[rloop];
 
         while(q->clients.size()) {
-            client = q->clients.front();
+            msg = q->clients.front();
             q->clients.pop_front();
-            client->unlink();
 
+            if(!msg->conn) break;
+            Connect *client = msg->conn;
             if(client->is_closed()) {
-                if(server->log & 8) std::cout << ltime() << "closed client " << client << std::endl;
-                client = NULL;
+                if(server->log & 8) std::cout << ltime() << "closed client " << msg->conn << std::endl;
+                delete msg;
+                msg = NULL;
                 continue;
             }
 
@@ -533,7 +535,8 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 
             if(skip) {
                 if(server->log & 8) std::cout << ltime() << "client is busy!!! " << client << std::endl;
-                client = NULL;
+                delete msg;
+                msg = NULL;
                 continue;
             }
 
@@ -562,31 +565,40 @@ int Loop::_add_worker(Slice name, Connect *worker) {
                 if(server->log & 2) std::cout << ltime() << "collision id\n";
                 client->send.status("400 Collision Id")->done(-1);  // FIXME
                 client->status = Status::net;
-                client = NULL;
+                delete msg;
+                msg = NULL;
                 continue;
             }
             break;
         }
-        if(client) break;
+        if(msg) break;
     }
 
-    if(client) {
-        if(worker->fail_on_disconnect) {
-            worker->client = client;
-            worker->client->link();
-        }
-        if(worker->noid) {
-            worker->status = Status::worker_wait_result;
-            worker->send.status("200 OK")->header("Name", name)->done(client->body);
-        } else {
-            worker->send.status("200 OK")->header("Id", client->id)->header("Name", name)->done(client->body);
-            server->wait_lock.lock();
-            server->wait_response[sid] = client;
-            server->wait_lock.unlock();
-            client->link();
+    if(msg) {
+        if(!msg->conn) {
             worker->status = Status::net;
+            worker->send.status("200 OK")->header("Name", name)->done(*msg->buf);
+            delete msg;
+        } else {
+            auto client = msg->conn;
+            delete msg;
+            if(worker->fail_on_disconnect) {
+                worker->client = client;
+                worker->client->link();
+            }
+            if(worker->noid) {
+                worker->status = Status::worker_wait_result;
+                worker->send.status("200 OK")->header("Name", name)->done(client->body);
+            } else {
+                worker->send.status("200 OK")->header("Id", client->id)->header("Name", name)->done(client->body);
+                server->wait_lock.lock();
+                server->wait_response[sid] = client;
+                server->wait_lock.unlock();
+                client->link();
+                worker->status = Status::net;
+            }
+            result = 1;
         }
-        result = 1;
     } else {
         Queue *q0 = &ql->queue[_nloop];
         if(q0->workers.size()) {
@@ -663,9 +675,14 @@ int Loop::client_request(ISlice name, Connect *client) {
     }
 
     if(worker) {
-        if(worker->noid) {
+        if(client->no_response) {
+            worker->status = Status::net;
+            worker->send.status("200 OK")->header("Name", name)->header("Async", Slice("true"))->done(client->body);
+            client->send.status("200 OK")->done(1);
+        } else if(worker->noid) {
             worker->client = client;
             client->link();
+            client->status = Status::client_wait_result;
             worker->status = Status::worker_wait_result;
             worker->send.status("200 OK")->header("Name", name)->done(client->body);
         } else {
@@ -706,23 +723,32 @@ int Loop::client_request(ISlice name, Connect *client) {
             server->wait_response[sid] = client;
             server->wait_lock.unlock();
             client->link();
+            client->status = Status::client_wait_result;
             worker->status = Status::net;
         }
     } else {
         bool inserted = false;
         auto *clients = &ql->queue[_nloop].clients;
+
+        Message *msg = new Message();
+        msg->priority = client->priority;
+        if(client->no_response) msg->attach_buffer(&client->body);
+        else msg->attach_client(client);
         for(auto it=clients->crbegin(); it!=clients->crend(); it++) {
-            if(client->priority <= (*it)->priority) {
-                clients->insert(it.base(), client);
+            if(msg->priority <= (*it)->priority) {
+                clients->insert(it.base(), msg);
                 inserted = true;
                 break;
             }
         }
-        if(!inserted) clients->push_front(client);
-        client->link();
+        if(!inserted) clients->push_front(msg);
+        if(client->no_response) {
+            client->send.status("200 OK")->done(1);
+        } else {
+            client->status = Status::client_wait_result;
+        }
     };
 
-    client->status = Status::client_wait_result;
     ql->mutex.unlock();
     return 0;
 };
@@ -798,3 +824,19 @@ void Loop::migrate(Connect *w, Connect *c) {
     c->need_loop = w->need_loop;
     if(server->log & 64) std::cout << "migrate: loop " << _nloop << " -> " << w->need_loop << ", fd " << w->fd << ", " << c->fd << std::endl;
 };
+
+
+void Message::attach_client(Connect *n_conn) {
+    conn = n_conn;
+    conn->link();
+};
+
+void Message::attach_buffer(Buffer *n_buf) {
+    if(!buf) buf = new Buffer();
+    buf->move(n_buf);
+};
+
+Message::~Message() {
+    if(conn) conn->unlink();
+    if(buf) delete buf;
+}

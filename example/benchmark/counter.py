@@ -15,12 +15,21 @@ def index():
 
 def show():
     prev = 0
+    history = []
+    hi = 0
     while True:
         start = time.time()
         time.sleep(1)
         now = time.time()
         dur = now - start
-        print(int((count - prev) / dur), 'ops')
+        ops = (count - prev) / dur
+        history.append(ops)
+        if len(history) > 20:
+            history = history[-20:]
+        avg = int(sum(history)/len(history))
+        if avg > hi:
+            hi = avg
+        print('{} ops, (avg {}, max {})'.format(int(ops), avg, hi))
         start = now
         prev = count
 

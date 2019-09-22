@@ -29,7 +29,7 @@ public:
         return true;
     }
 
-    bool equal(const char *s) {
+    bool equal(const char *s) const {
         int i = 0;
         while(*s) {
             if(i >= _size) return false;
@@ -52,13 +52,13 @@ public:
         return 0;
     }
 
-    inline bool operator==(const char *s) {return equal(s);}
-    inline bool operator!=(const char *s) {return !equal(s);}
-    inline bool empty() {return size() == 0;}
-    inline bool valid() {return _ptr != NULL;}
-    inline char* ptr() {return _ptr;}
-    inline int size() {return _size;}
-    std::string as_string(int _default=-1) {
+    inline bool operator==(const char *s) const {return equal(s);}
+    inline bool operator!=(const char *s) const {return !equal(s);}
+    inline bool empty() const {return size() == 0;}
+    inline bool valid() const {return _ptr != NULL;}
+    inline char* ptr() const {return _ptr;}
+    inline int size() const {return _size;}
+    std::string as_string(int _default=-1) const {
         std::string s;
         if(valid()) {
             s.append(ptr(), size());
@@ -221,7 +221,7 @@ public:
             i++;
         }
     }
-    void add(ISlice &s) {
+    void add(const ISlice &s) {
         add(s.ptr(), s.size());
     }
     void add_number(int n) {
@@ -269,5 +269,11 @@ public:
             _size -= n;
             memmove(_ptr, &_ptr[n], _size);
         }
+    }
+    void move(Buffer *buf) {
+        std::swap(_cap, buf->_cap);
+        std::swap(_ptr, buf->_ptr);
+        _size = buf->_size;
+        buf->_size = 0;
     }
 };

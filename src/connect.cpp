@@ -138,6 +138,7 @@ void Connect::on_recv(char *buf, int size) {
             if(!worker_mode) name.clear();
             content_length = 0;
             priority = 0;
+            no_response = false;
             if(status != Status::worker_wait_result) {
                 if(worker_mode) THROW("Wrong status for worker");
                 fail_on_disconnect = false;
@@ -358,6 +359,7 @@ void Connect::header_completed() {
         return;
     }
 
+    no_response = header_option == "async";
     loop->client_request(method, this);
 }
 
@@ -479,7 +481,7 @@ HttpSender *HttpSender::status(const char *status) {
     return this;
 };
 
-HttpSender *HttpSender::header(const char *key, ISlice &value) {
+HttpSender *HttpSender::header(const char *key, const ISlice &value) {
     conn->send_buffer.add(key);
     conn->send_buffer.add(": ");
     conn->send_buffer.add(value);

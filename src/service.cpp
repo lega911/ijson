@@ -110,14 +110,14 @@ void Service::_clean_dead_tasks() {
                 }
             }
 
-            it=q->clients.begin();
-            while(it != q->clients.end()) {
-                Connect *conn = *it;
-                if(conn->is_closed() || conn->status != Status::client_wait_result) {
-                    it = q->clients.erase(it);
-                    conn->unlink();
+            auto it2=q->clients.begin();
+            while(it2 != q->clients.end()) {
+                Message *msg = *it2;
+                if(msg->conn && (msg->conn->is_closed() || msg->conn->status != Status::client_wait_result)) {
+                    it2 = q->clients.erase(it2);
+                    delete msg;
                 } else {
-                    it++;
+                    it2++;
                 }
             }
         }
