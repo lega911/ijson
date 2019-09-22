@@ -498,6 +498,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     if(!worker->info.empty()) ql->info.set(worker->info);
 
     Message *msg = NULL;
+    GC<Message> gc;
     int result;
 
     ql->last_worker = get_time_sec();
@@ -513,12 +514,12 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         while(q->clients.size()) {
             msg = q->clients.front();
             q->clients.pop_front();
+            gc.add(msg);
 
             if(!msg->conn) break;
             Connect *client = msg->conn;
             if(client->is_closed()) {
                 if(server->log & 8) std::cout << ltime() << "closed client " << msg->conn << std::endl;
-                delete msg;
                 msg = NULL;
                 continue;
             }
@@ -535,7 +536,6 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 
             if(skip) {
                 if(server->log & 8) std::cout << ltime() << "client is busy!!! " << client << std::endl;
-                delete msg;
                 msg = NULL;
                 continue;
             }
@@ -565,7 +565,6 @@ int Loop::_add_worker(Slice name, Connect *worker) {
                 if(server->log & 2) std::cout << ltime() << "collision id\n";
                 client->send.status("400 Collision Id")->done(-1);  // FIXME
                 client->status = Status::net;
-                delete msg;
                 msg = NULL;
                 continue;
             }
@@ -578,10 +577,8 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         if(!msg->conn) {
             worker->status = Status::net;
             worker->send.status("200 OK")->header("Name", name)->done(*msg->buf);
-            delete msg;
         } else {
             auto client = msg->conn;
-            delete msg;
             if(worker->fail_on_disconnect) {
                 worker->client = client;
                 worker->client->link();

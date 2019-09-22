@@ -8,6 +8,7 @@ static const char *ijson_version = "0.3.11";
 #include <iostream>
 #include <stdio.h>
 #include <sys/types.h>
+#include <vector>
 
 #include "memory.h"
 #include "exception.h"
@@ -32,6 +33,22 @@ public:
 
     void lock(int n);
     void unlock();
+};
+
+
+template <class T>
+class GC {
+public:
+    void add(T *ptr) {
+        _list.push_back(ptr);
+    }
+    ~GC() {
+        for(auto const & ptr : _list) {
+            delete ptr;
+        }
+    }
+private:
+    std::vector<T*> _list;
 };
 
 
