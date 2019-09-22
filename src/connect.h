@@ -20,7 +20,6 @@ enum class Status {
 class HttpSender {
 private:
     Connect *conn = NULL;
-    bool _autosend = true;
 public:
     HttpSender() {};
     void set_connect(Connect *n_conn) {this->conn = n_conn;};
@@ -29,16 +28,13 @@ public:
     void done(ISlice &body);
     void done(int error);
     void done();
-    HttpSender *autosend(bool active=true) {
-        _autosend = active;
-        return this;
-    };
 };
 
 
 class Connect {
 private:
     int _socket_status = 1;  //  1 - read, 2 - write, -1 - closed
+    int _socket_status_active = 1;
     int _link = 0;
 public:
     int fd;
@@ -63,8 +59,13 @@ public:
         send.set_connect(NULL);
     };
 
-    void write_mode(bool active);
     void read_mode(bool active);
+    void write_mode(bool active);
+    inline void _switch_mode() {
+        if(_socket_status == _socket_status_active) return;
+        loop->set_poll_mode(fd, _socket_status);
+        _socket_status_active = _socket_status;
+    }
 
     void close() {_socket_status = -1;};
     inline bool is_closed() {return _socket_status == -1;};

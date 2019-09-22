@@ -20,7 +20,7 @@ void Connect::write_mode(bool active) {
         if(!(_socket_status & 2)) return;
         _socket_status = _socket_status & 0xfd;
     }
-    loop->set_poll_mode(fd, _socket_status);
+    loop->_queue_to_send.push_back(this);
 }
 
 void Connect::read_mode(bool active) {
@@ -499,16 +499,14 @@ void HttpSender::done(ISlice &body) {
         conn->send_buffer.add("\r\n\r\n");
         conn->send_buffer.add(body);
     }
-    if(_autosend) conn->write_mode(true);
-    else _autosend = true;
+    conn->write_mode(true);
 };
 
 void HttpSender::done() {
     if(conn->is_closed()) THROW("Trying to send to closed socket");
 
     conn->send_buffer.add("Content-Length: 0\r\n\r\n");
-    if(_autosend) conn->write_mode(true);
-    else _autosend = true;
+    conn->write_mode(true);
 };
 
 void HttpSender::done(int error) {

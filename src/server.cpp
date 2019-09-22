@@ -282,6 +282,7 @@ void Loop::_loop() {
             if(conn->go_loop) need_to_migrate = true;
         }
 
+        _perform_to_send();
         if(need_to_migrate) _migrate_send();
         _delete_connections();
         _migrate_recv();
@@ -353,12 +354,22 @@ void Loop::_loop() {
             if(conn->go_loop) need_to_migrate = true;
         }
 
+        _perform_to_send();
         if(need_to_migrate) _migrate_send();
         _delete_connections();
         _migrate_recv();
     }
 }
 #endif
+
+
+void Loop::_perform_to_send() {
+    if(!_queue_to_send.size()) return;
+    for(auto const& conn : _queue_to_send) {
+        conn->_switch_mode();
+    }
+    _queue_to_send.clear();
+};
 
 
 void Loop::_delete_connections() {
@@ -566,9 +577,9 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         }
         if(worker->noid) {
             worker->status = Status::worker_wait_result;
-            worker->send.status("200 OK")->header("Name", name)->autosend(false)->done(client->body);
+            worker->send.status("200 OK")->header("Name", name)->done(client->body);
         } else {
-            worker->send.status("200 OK")->header("Id", client->id)->header("Name", name)->autosend(false)->done(client->body);
+            worker->send.status("200 OK")->header("Id", client->id)->header("Name", name)->done(client->body);
             server->wait_lock.lock();
             server->wait_response[sid] = client;
             server->wait_lock.unlock();
@@ -598,13 +609,6 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     }
 
     ql->mutex.unlock();
-
-    if(client && client->send_buffer.size()) {
-        client->write_mode(true);
-    }
-    if(worker->send_buffer.size()) {
-        worker->write_mode(true);
-    }
     return result;
 };
 
@@ -663,7 +667,7 @@ int Loop::client_request(ISlice name, Connect *client) {
             worker->client = client;
             client->link();
             worker->status = Status::worker_wait_result;
-            worker->send.status("200 OK")->header("Name", name)->autosend(false)->done(client->body);
+            worker->send.status("200 OK")->header("Name", name)->done(client->body);
         } else {
             Slice id(client->id);
             if(id.empty()) {
@@ -697,7 +701,7 @@ int Loop::client_request(ISlice name, Connect *client) {
                 worker->client = client;
                 client->link();
             }
-            worker->send.status("200 OK")->header("Id", id)->header("Name", name)->autosend(false)->done(client->body);
+            worker->send.status("200 OK")->header("Id", id)->header("Name", name)->done(client->body);
             server->wait_lock.lock();
             server->wait_response[sid] = client;
             server->wait_lock.unlock();
@@ -720,14 +724,6 @@ int Loop::client_request(ISlice name, Connect *client) {
 
     client->status = Status::client_wait_result;
     ql->mutex.unlock();
-
-    if(worker && worker->send_buffer.size()) {
-        worker->write_mode(true);
-    }
-    if(client->send_buffer.size()) {
-        client->write_mode(true);
-    }
-
     return 0;
 };
 

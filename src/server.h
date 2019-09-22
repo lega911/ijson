@@ -114,4 +114,7 @@ public:
     int worker_result(ISlice id, Connect *worker);
     int worker_result_noid(Connect *worker);
     void migrate(Connect *w, Connect *c);
+
+    std::vector<Connect*> _queue_to_send;
+    void _perform_to_send();
 };
