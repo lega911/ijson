@@ -576,7 +576,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     if(msg) {
         if(!msg->conn) {
             worker->status = Status::net;
-            worker->send.status("200 OK")->header("Name", name)->done(*msg->buf);
+            worker->send.status("200 OK")->header("Name", name)->header("Async", Slice("true"))->done(*msg->buf);
         } else {
             auto client = msg->conn;
             if(worker->fail_on_disconnect) {

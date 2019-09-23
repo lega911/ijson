@@ -301,3 +301,72 @@ def test6_priority():
         worker.post(L + '/rpc/result', json={'result': task['request']})
     time.sleep(0.5)
     assert result == [0, 2, 9, 4, 6, 1, 8, 7, 5, 3]
+
+
+def test7_async():
+    is_async = False
+    data = None
+    
+    @run(0)
+    def first():
+        nonlocal is_async, data
+        r = post('/rpc/add', json={'name': 'test7/async'})
+        is_async = r.headers.get('Async') == 'true'
+        data = r.text
+    
+    time.sleep(0.1)
+
+    r = post('/test7/async', headers={'Option': 'async'}, data='test7')
+    assert r.status_code == 200
+    time.sleep(0.1)
+
+    assert is_async
+    assert data == 'test7'
+
+    details = post('/rpc/details').json()
+    assert details['test7/async']['workers'] == 0
+    assert details['test7/async']['clients'] == 0
+
+    for i in range(10):
+        r = post('/test7/async', headers={'Option': 'async'}, data='test_' + str(i))
+        assert r.status_code == 200
+        time.sleep(0.01)
+
+    details = post('/rpc/details').json()
+    assert details['test7/async']['workers'] == 0
+    assert details['test7/async']['clients'] == 10
+
+    for i in range(10):
+        r = post('/rpc/add', json={'name': 'test7/async'})
+        assert r.headers.get('Async') == 'true'
+        assert r.text == 'test_' + str(i)
+    
+    time.sleep(0.2)
+
+    details = post('/rpc/details').json()
+    assert details['test7/async']['workers'] == 0
+    assert details['test7/async']['clients'] == 0
+
+    for i in range(10):
+        time.sleep(i*0.02)
+
+        @run(0)
+        def worker():
+            r = post('/rpc/add', json={'name': 'test7/async'})
+            assert r.headers.get('Async') == 'true'
+            assert r.text == 'test_' + str(i)
+
+    time.sleep(0.1)
+
+    details = post('/rpc/details').json()
+    assert details['test7/async']['workers'] == 10
+    assert details['test7/async']['clients'] == 0
+
+    for i in range(10):
+        r = post('/test7/async', headers={'Option': 'async'}, data='test_' + str(i))
+        assert r.status_code == 200
+        time.sleep(0.01)
+    
+    details = post('/rpc/details').json()
+    assert details['test7/async']['workers'] == 0
+    assert details['test7/async']['clients'] == 0
