@@ -9,7 +9,7 @@ class Session:
     def __init__(self):
         self.curl = pycurl.Curl()
 
-    def post(self, url, *, json=None, data=None):
+    def post(self, url, *, json=None, data=None, headers=None):
         if json:
             data = ujson.dumps(json).encode('utf8')
 
@@ -21,7 +21,7 @@ class Session:
         if data:
             curl.setopt(pycurl.POSTFIELDS, data)
         curl.setopt(pycurl.WRITEDATA, buffer)
-        curl.setopt(pycurl.HTTPHEADER, ['Accept-Encoding:', 'Content-Type:', 'Accept:', 'User-Agent:'])
+        curl.setopt(pycurl.HTTPHEADER, self._to_header(headers))
         curl.perform()
 
         response = buffer.getvalue().decode('utf8')
@@ -32,6 +32,16 @@ class Session:
         curl = self.curl
         buffer = BytesIO()
 
+        curl.setopt(pycurl.URL, url)
+        curl.setopt(pycurl.WRITEDATA, buffer)
+        curl.setopt(pycurl.HTTPHEADER, self._to_header(headers))
+        curl.perform()
+
+        response = buffer.getvalue().decode('utf8')
+        if response:
+            return ujson.loads(response)
+    
+    def _to_header(self, headers):
         hdr = {
             'Accept-Encoding': None,
             'Content-Type': None,
@@ -48,15 +58,7 @@ class Session:
                 hdrl.append(k + ':')
             else:
                 hdrl.append(k + ': ' + v)
-
-        curl.setopt(pycurl.URL, url)
-        curl.setopt(pycurl.WRITEDATA, buffer)
-        curl.setopt(pycurl.HTTPHEADER, hdrl)
-        curl.perform()
-
-        response = buffer.getvalue().decode('utf8')
-        if response:
-            return ujson.loads(response)
+        return hdrl
 
 
 class Counter:
