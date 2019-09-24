@@ -370,3 +370,54 @@ def test7_async():
     details = post('/rpc/details').json()
     assert details['test7/async']['workers'] == 0
     assert details['test7/async']['clients'] == 0
+
+
+def test7_async_worker():
+    result = 0
+    count = 0
+    check = None
+
+    @run(0)
+    def worker():
+        nonlocal result, count, check
+        s = requests.Session()
+        r = s.post(L + '/rpc/worker', json={'name': 'test7/async2'})
+        while True:
+            assert r.status_code == 200
+            if r.content == b'stop':
+                r = s.post(L + '/rpc/worker', headers={'Option': 'stop'})
+                assert r.status_code == 200
+                break
+
+            result += r.json()['data']
+            if result == 0:
+                time.sleep(0.5)
+                check = post('/rpc/details').json()
+            count += 1
+            r = s.post(L + '/rpc/worker')
+        result += 1000
+
+    time.sleep(0.1)
+    s = requests.Session()
+    for i in range(15):
+        if i == 7:
+            time.sleep(1)
+            check2 = post('/rpc/details').json()
+        r = s.post(L + '/test7/async2', json={'data': i}, headers={'Option': 'async'})
+        assert r.status_code == 200
+    s.post(L + '/test7/async2', data=b'stop')
+
+    time.sleep(0.2)
+    check3 = post('/rpc/details').json()
+
+    assert count == 15
+    assert result == 1105
+
+    assert check['test7/async2']['clients'] == 6
+    assert check['test7/async2']['workers'] == 0
+
+    assert check2['test7/async2']['clients'] == 0
+    assert check2['test7/async2']['workers'] == 1
+
+    assert check3['test7/async2']['clients'] == 0
+    assert check3['test7/async2']['workers'] == 0

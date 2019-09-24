@@ -7,7 +7,7 @@
 
 
 enum class Status {
-    net, worker_wait_job, worker_wait_result, migration, client_wait_result, busy
+    net, worker_wait_job, worker_wait_result, migration, client_wait_result, busy, worker_mode_async
 };
 
 

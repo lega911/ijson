@@ -56,7 +56,7 @@ void Connect::on_send() {
 
 
 void Connect::on_recv(char *buf, int size) {
-    if(!(status == Status::net || (status == Status::worker_wait_result && noid))) {
+    if(!(status == Status::net || (status == Status::worker_wait_result && noid) || (status == Status::worker_mode_async && worker_mode))) {
         if(server->log & 4) std::cout << ltime() << "connect " << (void*)this << ", warning: data is come, but connection is not ready\n";
         buffer.add(buf, size);
         return;
@@ -140,11 +140,14 @@ void Connect::on_recv(char *buf, int size) {
             priority = 0;
             no_response = false;
             if(status != Status::worker_wait_result) {
-                if(worker_mode) THROW("Wrong status for worker");
-                fail_on_disconnect = false;
-                if(client) client->unlink();
-                client = NULL;
-                noid = false;
+                if(worker_mode) {
+                    if(status != Status::worker_mode_async) THROW("Wrong status for worker");
+                } else {
+                    fail_on_disconnect = false;
+                    if(client) client->unlink();
+                    client = NULL;
+                    noid = false;
+                }
             } else {
                 if(!noid) THROW("noid is false");
             }
@@ -262,8 +265,8 @@ void Connect::header_completed() {
             return;
         };
 
-        loop->worker_result_noid(this);
-        if(!header_option.empty() && header_option == "stop") {
+        if(status != Status::worker_mode_async) loop->worker_result_noid(this);
+        if(header_option == "stop") {
             worker_mode = false;
             this->send.status("200 OK")->done(1);
             status = Status::net;

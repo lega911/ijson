@@ -563,7 +563,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             if(busy) {
                 // colision id
                 if(server->log & 2) std::cout << ltime() << "collision id\n";
-                client->send.status("400 Collision Id")->done(-1);  // FIXME
+                client->send.status("400 Collision Id")->done(-1);
                 client->status = Status::net;
                 msg = NULL;
                 continue;
@@ -575,7 +575,8 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 
     if(msg) {
         if(!msg->conn) {
-            worker->status = Status::net;
+            if(worker->worker_mode) worker->status = Status::worker_mode_async;
+            else worker->status = Status::net;
             worker->send.status("200 OK")->header("Name", name)->header("Async", Slice("true"))->done(*msg->buf);
         } else {
             auto client = msg->conn;
@@ -673,7 +674,8 @@ int Loop::client_request(ISlice name, Connect *client) {
 
     if(worker) {
         if(client->no_response) {
-            worker->status = Status::net;
+            if(worker->worker_mode) worker->status = Status::worker_mode_async;
+            else worker->status = Status::net;
             worker->send.status("200 OK")->header("Name", name)->header("Async", Slice("true"))->done(client->body);
             client->send.status("200 OK")->done(1);
         } else if(worker->noid) {
