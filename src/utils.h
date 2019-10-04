@@ -1,7 +1,11 @@
 
 #pragma once
 
-static const char *ijson_version = "0.3.11";
+#ifndef _VERSION
+#define _VERSION "0.0.0"
+#endif
+
+static const char *ijson_version = _VERSION;
 
 #include <stdlib.h>
 #include <string.h>
