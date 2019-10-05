@@ -88,6 +88,7 @@ private:
     Slice header_option;
 public:
     Buffer name;
+    Slice type;
     Status status = Status::net;
     Buffer body;
     Buffer id;

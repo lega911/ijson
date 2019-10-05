@@ -139,6 +139,7 @@ void Connect::on_recv(char *buf, int size) {
             content_length = 0;
             priority = 0;
             no_response = false;
+            type.reset();
             if(status != Status::worker_wait_result) {
                 if(worker_mode) {
                     if(status != Status::worker_mode_async) THROW("Wrong status for worker");
@@ -199,6 +200,9 @@ void Connect::read_header(Slice &data) {
     if(data.starts_with("Content-Length: ")) {
         data.remove(16);
         content_length = data.atoi();
+    } else if(data.starts_with("Type: ")) {
+        data.remove(6);
+        type = data;
     } else if(data.starts_with("Name: ")) {
         data.remove(6);
         name.set(data);
@@ -260,11 +264,6 @@ void Connect::header_completed() {
     #endif
 
     if(worker_mode) {
-        if(this->path != "rpc/worker") {
-            this->send.status("400 Worker expected")->done(-1);
-            return;
-        };
-
         if(status != Status::worker_mode_async) loop->worker_result_noid(this);
         if(header_option == "stop") {
             worker_mode = false;
@@ -297,6 +296,26 @@ void Connect::header_completed() {
     Slice id(this->id);
     json.load(this->body);
     bool root_json = true;
+
+    if(!type.empty()) {
+        name.set(path);
+        if(type == "async") {
+            no_response = true;
+            loop->client_request(name, this);
+        } else if(type == "get+") {
+            this->noid = true;
+            this->fail_on_disconnect = true;
+            rpc_add();
+        } else if(type == "get") {
+            rpc_add();
+        } else if(type == "worker") {
+            worker_mode = true;
+            rpc_add();
+        } else {
+            this->send.status("400 Wrong type")->done(-32602);
+        }
+        return;
+    }
 
     if(this->path == "rpc/call") {
         Slice params;
