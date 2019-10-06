@@ -76,7 +76,9 @@ void generator_init() {
 void generate_id(Buffer &r) {
     const char hex[] = "0123456789abcdef";
     static u32 index = 0;
+    static std::mutex lock;
 
+    lock.lock();
     r.resize(16, 16);
     char *p = r.ptr();
 
@@ -93,4 +95,5 @@ void generate_id(Buffer &r) {
         d >>= 4;
     }
     r.resize(16, i);
+    lock.unlock();
 }
