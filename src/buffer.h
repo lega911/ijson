@@ -247,6 +247,20 @@ public:
         }
         add(&s[i + 1], 11 - i);
     }
+    void add_hex(u64 n) {
+        if(!n) {
+            add("0", 1);
+            return;
+        }
+        const char hex[] = "0123456789abcdef";
+        char r[16];
+        int i = 15;
+        while(n) {
+            r[i--] = hex[n & 0xf];
+            n >>= 4;
+        }
+        add(&r[i + 1], 15-i);
+    };
     void set(const char *buf, int size) {
         clear();
         add(buf, size);

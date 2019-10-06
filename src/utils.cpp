@@ -74,23 +74,7 @@ void generator_init() {
 
 
 void generate_id(Buffer &r) {
-    const char hex[] = "0123456789abcdef";
     static u32 index = 0;
-
-    r.resize(16, 16);
-    char *p = r.ptr();
-
-    u32 v = (u32)std::rand();
-    p[0] = hex[v & 0xf];
-    p[1] = hex[v >> 4 & 0xf];
-    p[2] = hex[v >> 8 & 0xf];
-    p[3] = hex[v >> 12 & 0xf];
-
-    int i = 4;
-    u32 d = ++index;
-    while(d) {
-        p[i++] = hex[d & 0xf];
-        d >>= 4;
-    }
-    r.resize(16, i);
+    r.clear();
+    r.add_hex((++index << 16) + (std::rand() & 0xffff));
 }
