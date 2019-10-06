@@ -543,12 +543,19 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             if(worker->noid) break;
             Slice id = client->id;
             if(id.empty()) {
-                while(client->json.scan()) {
-                    if(client->json.key == "id") {
-                        id = client->json.value;
-                        client->id.set(id);
-                        break;
+                try {
+                    while(client->json.scan()) {
+                        if(client->json.key == "id") {
+                            id = client->json.value;
+                            client->id.set(id);
+                            break;
+                        }
                     }
+                } catch (const error::InvalidData &e) {
+                    client->send.status("400 No Id")->done(-1);
+                    if(server->log & 4) std::cout << ltime() << "400 no id " << name.as_string() << std::endl;
+                    msg = NULL;
+                    continue;
                 }
                 if(id.empty()) {
                     generate_id(client->id);
@@ -633,7 +640,7 @@ int Loop::client_request(ISlice name, Connect *client) {
     Connect *worker = NULL;
     Queue *q;
 
-    ql->mutex.lock();
+    LOCK _l(ql->mutex);
     int rloop = _nloop;
     for(int index=-1;index<server->threads;index++) {
         if(index == _nloop) continue;
@@ -687,12 +694,21 @@ int Loop::client_request(ISlice name, Connect *client) {
         } else {
             Slice id(client->id);
             if(id.empty()) {
-                while(client->json.scan()) {
-                    if(client->json.key == "id") {
-                        id = client->json.value;
-                        client->id.set(client->json.value);
-                        break;
+                try {
+                    while(client->json.scan()) {
+                        if(client->json.key == "id") {
+                            id = client->json.value;
+                            client->id.set(client->json.value);
+                            break;
+                        }
                     }
+                } catch (const error::InvalidData &e) {
+                    worker->link();
+                    worker->status = Status::worker_wait_job;
+                    ql->queue[worker->nloop].workers.push_front(worker);
+                    client->send.status("400 No Id")->done(-1);
+                    if(server->log & 4) std::cout << ltime() << "400 no id " << name.as_string() << std::endl;
+                    return -3;
                 }
             }
             if(id.empty()) {
@@ -708,7 +724,6 @@ int Loop::client_request(ISlice name, Connect *client) {
                 worker->link();
                 worker->status = Status::worker_wait_job;
                 ql->queue[worker->nloop].workers.push_front(worker);
-                ql->mutex.unlock();
                 client->send.status("400 Collision Id")->done(-1);
                 if(server->log & 4) std::cout << ltime() << "400 collision id " << name.as_string() << std::endl;
                 return -3;
@@ -748,7 +763,6 @@ int Loop::client_request(ISlice name, Connect *client) {
         }
     };
 
-    ql->mutex.unlock();
     return 0;
 };
 
