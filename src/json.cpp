@@ -24,6 +24,9 @@ bool Json::scan() {
     strip();
     if(_status == 0) {
         if(next() != '{') throw error::InvalidData();
+        strip();
+        if(next() == '}') return false;
+        index--;
     } else if(_status == 1) {
         char a = next();
         if(a == '}') return false;
