@@ -138,6 +138,7 @@ void Connect::on_recv(char *buf, int size) {
             if(!worker_mode) name.clear();
             content_length = 0;
             priority = 0;
+            required_worker = 0;
             no_response = false;
             type.reset();
             if(status != Status::worker_wait_result) {
@@ -215,6 +216,9 @@ void Connect::read_header(Slice &data) {
     } else if(data.starts_with("Priority: ")) {
         data.remove(10);
         priority = data.atoi();
+    } else if(data.starts_with("Worker-Id: ")) {
+        data.remove(11);
+        required_worker = data.atoi();
     }
 }
 
@@ -424,7 +428,7 @@ void Connect::send_details() {
     Buffer res(256);
     res.add("{\"_version\":\"");
     res.add(ijson_version);
-    res.add("\",\n");
+    res.add("\",");
     LOCK _l(server->global_lock);
 
     for(const auto &ql : server->_queue_list) {
@@ -432,14 +436,21 @@ void Connect::send_details() {
         res.add(ql->name);
         res.add("\":{\"last_worker\":");
         res.add_number(ql->last_worker);
-        res.add(",\"workers\":");
+        res.add(",\"worker_ids\":[");
 
         int worker_count = 0;
         int client_count = 0;
+        bool first = true;
         for(int i=0;i<server->threads;i++) {
-            worker_count += ql->queue[i].workers.size();
+            for(const auto &w : ql->queue[i].workers) {
+                if(first) first = false;
+                else res.add(",", 1);
+                res.add_number(w->connection_id);
+                worker_count++;
+            }
             client_count += ql->queue[i].clients.size();
         }
+        res.add("],\"workers\":");
         res.add_number(worker_count);
         res.add(",\"clients\":");
         res.add_number(client_count);

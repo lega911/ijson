@@ -6,6 +6,7 @@
 #include <deque>
 #include <mutex>
 #include <thread>
+#include <atomic>
 #include "utils.h"
 #include "mapper.h"
 
@@ -20,6 +21,7 @@ class Connect;
 class Message {
 public:
     int priority = 0;
+    u32 required_worker = 0;
     Connect *conn = NULL;
     Buffer *buf = NULL;
 
@@ -59,6 +61,7 @@ private:
     void _accept();
     bool _valid_ip(u32 ip);
 public:
+    u32 connection_index = 1;
     int active_loop = 0;
     int max_fd = 0;
     Slice host;
