@@ -203,6 +203,9 @@ void Connect::read_header(Slice &data) {
     } else if(data.starts_with("Type: ")) {
         data.remove(6);
         type = data;
+    } else if(data.starts_with("X-Type: ")) {
+        data.remove(8);
+        type = data;
     } else if(data.starts_with("Name: ")) {
         data.remove(6);
         name.set(data);
@@ -277,7 +280,7 @@ void Connect::header_completed() {
     }
 
     if(noid) {
-        if(this->path != "rpc/result") {
+        if(this->path != "rpc/result" && type != "result") {
             this->send.status("400 Result expected")->done(-1);
             return;
         };
@@ -295,7 +298,6 @@ void Connect::header_completed() {
     Slice method;
     Slice id(this->id);
     json.load(this->body);
-    bool root_json = true;
 
     if(!type.empty()) {
         name.set(path);
@@ -311,6 +313,9 @@ void Connect::header_completed() {
         } else if(type == "worker") {
             worker_mode = true;
             rpc_add();
+        } else if(type == "result") {
+            if(id.empty()) id.set(path);
+            rpc_result(id);
         } else {
             this->send.status("400 Wrong type")->done(-32602);
         }
@@ -326,10 +331,7 @@ void Connect::header_completed() {
                 this->id.set(id);
             } else if(json.key == "params") params = json.value;
         }
-        if(!params.empty()) {
-            root_json = false;
-            json.load(params);
-        }
+        if(!params.empty()) json.load(params, 1);
 
         if(!method.empty() && method.ptr()[0] == '/') method.remove(1);
         if(method.empty()) {
@@ -348,30 +350,7 @@ void Connect::header_completed() {
         rpc_add();
         return;
     } else if(method == "rpc/result") {
-        if(id.empty() && root_json) {
-            while(json.scan()) {
-                if(json.key == "id") {
-                    id = json.value;
-                    break;
-                }
-            }
-        }
-        if(id.empty()) {
-            if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
-            this->send.status("400 No id")->done(-1);
-        } else {
-            int r = loop->worker_result(id, this);
-            if(r == 0) {
-                this->send.status("200 OK")->done(1);
-            } else if(r == -2) {
-                if(server->log & 4) std::cout << ltime() << "499 Client is gone\n";
-                this->send.status("499 Closed")->done(-1);
-            } else {
-                if(server->log & 2) std::cout << ltime() << "400 Wrong id for /rpc/result\n";
-                this->send.status("400 Wrong id")->done(-1);
-            }
-        }
-        status = Status::net;
+        rpc_result(id);
         return;
     } else if(method == "rpc/details") {
         send_details();
@@ -383,6 +362,33 @@ void Connect::header_completed() {
 
     no_response = header_option == "async";
     loop->client_request(method, this);
+}
+
+void Connect::rpc_result(ISlice &id) {
+    if(id.empty() && json.level == 0) {
+        while(json.scan()) {
+            if(json.key == "id") {
+                id = json.value;
+                break;
+            }
+        }
+    }
+    if(id.empty()) {
+        if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
+        this->send.status("400 No id")->done(-1);
+    } else {
+        int r = loop->worker_result(id, this);
+        if(r == 0) {
+            this->send.status("200 OK")->done(1);
+        } else if(r == -2) {
+            if(server->log & 4) std::cout << ltime() << "499 Client is gone\n";
+            this->send.status("499 Closed")->done(-1);
+        } else {
+            if(server->log & 2) std::cout << ltime() << "400 Wrong id for /rpc/result\n";
+            this->send.status("400 Wrong id")->done(-1);
+        }
+    }
+    status = Status::net;
 }
 
 void Connect::rpc_add() {

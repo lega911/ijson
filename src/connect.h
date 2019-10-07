@@ -107,5 +107,6 @@ public:
     void send_help();
     void rpc_add();
     void rpc_worker();
+    void rpc_result(ISlice &id);
     void header_completed();
 };

@@ -68,7 +68,7 @@ def test_default():
 def test_request_without_id():
     def run_worker():
         r = get('/one', type='get')
-        post('/rpc/result', json={'result': 'ok'}, headers={'id': r.headers['id']})
+        post('/' + r.headers['id'], json={'result': 'ok'}, type='result')
     
     threading.Thread(target=run_worker).start()
     time.sleep(0.1)
@@ -165,10 +165,9 @@ def test_pattern():
 
     task = get('/task/revert', type='get').json()
     assert task['id'] == 12345
-    post('/rpc/result', json={'id': 12345, 'result': 'ok'})
+    post('/12345', json={'result': 'ok'}, type='result')
     time.sleep(0.1)
     assert h_response['result'] == 'ok'
-    assert h_response['id'] == 12345
 
 
 def test4():
@@ -207,7 +206,7 @@ def test6_priority():
     def worker():
         worker = requests.Session()
         task = worker.post(L + '/test6', headers={'Type': 'get+'}).json()
-        worker.post(L + '/rpc/result', json={'result': task['request']}, timeout=TIMEOUT)
+        worker.post(L, json={'result': task['request']}, headers={'X-Type': 'result'}, timeout=TIMEOUT)
 
     time.sleep(0.1)
     response = post('/test6', json={'request': 0}).json()
@@ -240,7 +239,7 @@ def test6_priority():
     worker = requests.Session()
     for _ in range(9):
         task = worker.post(L + '/test6', headers={'Type': 'get+'}, timeout=TIMEOUT).json()
-        worker.post(L + '/rpc/result', json={'result': task['request']})
+        worker.post(L, json={'result': task['request']}, headers={'Type': 'result'}, timeout=TIMEOUT)
     time.sleep(0.5)
     assert result == [0, 2, 9, 4, 6, 1, 8, 7, 5, 3]
 
