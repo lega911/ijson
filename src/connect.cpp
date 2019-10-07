@@ -2,8 +2,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <string.h>
-#include "connect.h"
 #include <bits/stdc++.h> 
+#include "connect.h"
 
 
 void Connect::unlink() {
@@ -216,9 +216,12 @@ void Connect::read_header(Slice &data) {
     } else if(data.starts_with("Priority: ")) {
         data.remove(10);
         priority = data.atoi();
-    } else if(data.starts_with("Worker-Id: ")) {
+    } else if(data.starts_with("Worker-ID: ")) {
         data.remove(11);
         required_worker = data.atoi();
+    } else if(data.starts_with("Set-ID: ")) {
+        data.remove(8);
+        connection_id = data.atoi();
     }
 }
 
@@ -428,7 +431,7 @@ void Connect::send_details() {
     Buffer res(256);
     res.add("{\"_version\":\"");
     res.add(ijson_version);
-    res.add("\",");
+    res.add("\",\n");
     LOCK _l(server->global_lock);
 
     for(const auto &ql : server->_queue_list) {

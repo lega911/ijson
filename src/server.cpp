@@ -47,7 +47,7 @@ void Server::_listen() {
     if(r < 0) THROW("Error on binding, port is busy?");  // fix vscode highlighting
 
     if(listen(_fd, 64) < 0) THROW("ERROR on listen");
-    if(this->log & 8) std::cout << ltime() << "Server started on " << host.as_string() << ":" << port << std::endl;
+    if(this->log & 8) std::cout << ltime() << "Inverted Json " << ijson_version << " started on " << host.as_string() << ":" << port << std::endl;
 };
 
 

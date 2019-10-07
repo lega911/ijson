@@ -37,7 +37,6 @@ private:
     int _socket_status_active = 1;
     int _link = 0;
 public:
-    u32 connection_id;
     int fd;
     bool keep_alive;
     HttpSender send;
@@ -49,7 +48,7 @@ public:
     Server *server;
     std::mutex mutex;
 
-    Connect(Server *server, int fd, u32 _id) : connection_id(_id) {
+    Connect(Server *server, int fd, u64 _id) : connection_id(_id) {
         this->server = server;
         this->fd = fd;
         loop = server->loops[0];
@@ -98,7 +97,8 @@ public:
     bool no_response = false;
     bool worker_mode = false;
     int priority = 0;
-    u32 required_worker = 0;
+    u64 connection_id;
+    u64 required_worker = 0;
     Connect *client = NULL;
     Json json;
     Slice info;

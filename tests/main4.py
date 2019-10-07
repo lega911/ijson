@@ -364,3 +364,49 @@ def test7_async_worker():
 
     assert check3['test7/async2']['clients'] == 0
     assert check3['test7/async2']['workers'] == 0
+
+
+def test8_worker_id():
+    def go(sleep, name, id=None):
+        @run(sleep)
+        def worker():
+            s = requests.Session()
+            headers = {'Type': 'get+'}
+            if id:
+                headers['Set-ID'] = str(id)
+            r = s.get(L + '/test8', headers=headers)
+            s.post(L + '/rpc/result', json={'name': name})
+
+    go(0, 'linux')
+    go(0.1, 'windows')
+    go(0.2, 'freebsd', 2000000)
+    go(0.3, 'macos')
+    go(0.4, 'unix', 1000000)
+    go(0.5, 'redhat')
+    go(0.6, 'ubuntu')
+
+    time.sleep(1)
+
+    d = get('/rpc/details').json()['test8']
+    workers = list(map(str, d['worker_ids']))
+
+    assert get('/test8', headers={'Worker-ID': workers[3]}).json()['name'] == 'macos'
+    assert get('/test8', headers={'Worker-ID': workers[1]}).json()['name'] == 'windows'
+    assert get('/test8', headers={'Worker-ID': workers[5]}).json()['name'] == 'redhat'
+    del workers[5]
+    del workers[3]
+    del workers[1]
+
+    d = get('/rpc/details').json()['test8']
+    assert workers == list(map(str, d['worker_ids']))
+
+    assert get('/test8', headers={'Worker-ID': '1000000'}).json()['name'] == 'unix'
+    assert get('/test8', headers={'Worker-ID': '2000000'}).json()['name'] == 'freebsd'
+
+    assert len(get('/rpc/details').json()['test8']['worker_ids']) == 2
+
+    assert get('/test8').json()['name'] == 'linux'
+    assert get('/test8').json()['name'] == 'ubuntu'
+
+    assert len(get('/rpc/details').json()['test8']['worker_ids']) == 0
+    time.sleep(0.1)
