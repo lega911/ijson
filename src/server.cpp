@@ -517,6 +517,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 
             if(msg->required_worker) {
                 if(msg->required_worker != worker->connection_id) {
+                    msg = NULL;
                     it++;
                     continue;
                 }
@@ -660,6 +661,7 @@ int Loop::client_request(ISlice name, Connect *client) {
             worker = *it;
             if(client->required_worker) {
                 if(client->required_worker != worker->connection_id) {
+                    worker = NULL;
                     it++;
                     continue;
                 }

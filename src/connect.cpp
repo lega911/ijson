@@ -492,11 +492,16 @@ void Connect::send_help() {
     for(const auto &ql : list) {
         res.add(ql->name);
 
-        for(int i=ql->name.size();i<20;i++) res.add(" ", 1);
-        res.add("  x ");
-
+        int client_count = 0;
         int worker_count = 0;
-        for(int i=0;i<server->threads;i++) worker_count += ql->queue[i].workers.size() - ql->queue[i].clients.size();
+        for(int i=0;i<server->threads;i++) {
+            client_count += ql->queue[i].clients.size();
+            worker_count += ql->queue[i].workers.size();
+        }
+
+        for(int i=ql->name.size();i<20;i++) res.add(" ", 1);
+        res.add_number(client_count);
+        res.add("/");
         res.add_number(worker_count);
         if(!ql->info.empty()) {
             res.add("  ");

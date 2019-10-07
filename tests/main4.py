@@ -409,3 +409,40 @@ def test8_worker_id():
 
     assert len(get('/rpc/details').json()['test8']['worker_ids']) == 0
     time.sleep(0.1)
+
+
+def test8_worker_id2():
+    c0 = None
+    w0 = None
+
+    @run(0)
+    def worker():
+        nonlocal w0
+        w0 = get('/test8', type='get')
+        post('/' + w0.headers['id'], type='result', json={'result': 'w0'})
+
+    @run(0.1)
+    def client():
+        nonlocal c0
+        c0 = get('/test8', headers={'Worker-ID': '1000015'}, json={'data': 'c0'})
+
+    time.sleep(0.5)
+    assert c0 is None and w0 is None
+    details = get('/rpc/details').json()['test8']
+    assert details['workers'] == 1
+    assert details['clients'] == 1
+
+    c1 = get('/test8', json={'data': 'c1'})
+    assert c1.json()['result'] == 'w0'
+    assert w0.json()['data'] == 'c1'
+
+    assert c0 is None
+    details = get('/rpc/details').json()['test8']
+    assert details['workers'] == 0
+    assert details['clients'] == 1
+
+    w1 = get('/test8', type='get', headers={'Set-ID': '1000015'})
+    assert w1.json()['data'] == 'c0'
+    post('/' + w1.headers['id'], type='result', json={'result': 'w1'})
+    time.sleep(0.1)
+    assert c0.json()['result'] == 'w1'
