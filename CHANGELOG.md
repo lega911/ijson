@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4
+* Set type of request - header `"Type"/"X-Type"`, e.g. `"Type: async"`, supported: *async, get, get+, worker, result*
+* Call a certain worker by id, header `"Worker-ID: <worker id>"`
+* `/rpc/details` displays worker ids
+* Set worker id via header `"Set-ID: <worker id>"`
+
 ## 0.3
 * Call a command without await a response: header `Option: async`
 * Support: Linux - epoll, FreeBSD and MacOS - kqueue
