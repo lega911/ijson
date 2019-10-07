@@ -48,7 +48,7 @@ public:
     Server *server;
     std::mutex mutex;
 
-    Connect(Server *server, int fd) {
+    Connect(Server *server, int fd, u64 _id) : connection_id(_id) {
         this->server = server;
         this->fd = fd;
         loop = server->loops[0];
@@ -97,6 +97,8 @@ public:
     bool no_response = false;
     bool worker_mode = false;
     int priority = 0;
+    u64 connection_id;
+    u64 required_worker = 0;
     Connect *client = NULL;
     Json json;
     Slice info;

@@ -47,7 +47,7 @@ void Server::_listen() {
     if(r < 0) THROW("Error on binding, port is busy?");  // fix vscode highlighting
 
     if(listen(_fd, 64) < 0) THROW("ERROR on listen");
-    if(this->log & 8) std::cout << ltime() << "Server started on " << host.as_string() << ":" << port << std::endl;
+    if(this->log & 8) std::cout << ltime() << "Inverted Json " << ijson_version << " started on " << host.as_string() << ":" << port << std::endl;
 };
 
 
@@ -85,7 +85,7 @@ void Server::_accept() {
         };
 
         if(connections[fd]) THROW("Connection place is not empty");
-        Connect* conn = new Connect(this, fd);
+        Connect* conn = new Connect(this, fd, connection_index++);
         connections[fd] = conn;
         conn->link();
 
@@ -511,9 +511,17 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         if(index >= 0) rloop = index;
         q = &ql->queue[rloop];
 
-        while(q->clients.size()) {
-            msg = q->clients.front();
-            q->clients.pop_front();
+        auto it=q->clients.begin();
+        while (it != q->clients.end()) {
+            msg = *it;
+
+            if(msg->required_worker) {
+                if(msg->required_worker != worker->connection_id) {
+                    it++;
+                    continue;
+                }
+            }
+            it = q->clients.erase(it);
             gc.add(msg);
 
             if(!msg->conn) break;
@@ -647,9 +655,16 @@ int Loop::client_request(ISlice name, Connect *client) {
         if(index >= 0) rloop = index;
         q = &ql->queue[rloop];
 
-        while (q->workers.size()) {
-            worker = q->workers.front();
-            q->workers.pop_front();
+        auto it=q->workers.begin();
+        while (it != q->workers.end()) {
+            worker = *it;
+            if(client->required_worker) {
+                if(client->required_worker != worker->connection_id) {
+                    it++;
+                    continue;
+                }
+            }
+            it = q->workers.erase(it);
             worker->unlink();
 
             if(worker->is_closed()) {
@@ -746,6 +761,7 @@ int Loop::client_request(ISlice name, Connect *client) {
 
         Message *msg = new Message();
         msg->priority = client->priority;
+        msg->required_worker = client->required_worker;
         if(client->no_response) msg->attach_buffer(&client->body);
         else msg->attach_client(client);
         for(auto it=clients->crbegin(); it!=clients->crend(); it++) {
