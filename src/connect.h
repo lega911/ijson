@@ -88,6 +88,7 @@ private:
     Slice header_option;
 public:
     Buffer name;
+    Slice type;
     Status status = Status::net;
     Buffer body;
     Buffer id;
@@ -106,5 +107,6 @@ public:
     void send_help();
     void rpc_add();
     void rpc_worker();
+    void rpc_result(ISlice &id);
     void header_completed();
 };

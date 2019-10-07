@@ -22,3 +22,4 @@ docker_slim:
 	g++ src/*.cpp -pthread -std=c++17 -D_VERSION='"$(VERSION)"' -DDOCKER -O2 -o docker-slim/ijson -static
 test:
 	cd tests; pytest -v -s main.py
+	cd tests; pytest -v -s main4.py

@@ -13,12 +13,14 @@ class Json {
 public:
     Slice key;
     Slice value;
+    int level = 0;
 
     Json() {reset();};
     Json(ISlice data) {load(data);};
-    void load(ISlice data) {
+    void load(ISlice data, int level=0) {
         reset();
         _data = data;
+        this->level = level;
     };
     void reset() {
         _status = 0;
