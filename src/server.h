@@ -9,6 +9,7 @@
 #include <atomic>
 #include "utils.h"
 #include "mapper.h"
+#include "workerlist.h"
 
 
 #define MAX_EVENTS 256
@@ -45,6 +46,8 @@ public:
     std::mutex mutex;
     Queue *queue;
     Buffer info;
+
+    WorkerList workers;
     QueueLine(int n) {
         queue = new Queue[n];
     }

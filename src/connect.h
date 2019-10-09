@@ -4,6 +4,7 @@
 #include "server.h"
 #include "utils.h"
 #include "json.h"
+#include "workerlist.h"
 
 
 enum class Status {
@@ -112,13 +113,14 @@ public:
     Connect *client = NULL;
     Json json;
     Slice info;
+    WorkerItem *worker_item = NULL;
 
     int read_method(Slice &line);
     void read_header(Slice &data);
     void send_details();
     void send_help();
     void rpc_add();
-    void rpc_worker();
     void rpc_result(ISlice &id);
+    void pub(ISlice &name);
     void header_completed();
 };

@@ -296,6 +296,10 @@ void Connect::header_completed() {
     if(worker_mode) {
         if(status != Status::worker_mode_async) loop->worker_result_noid(this);
         if(header_option == "stop") {
+            if(worker_item) {
+                worker_item->pop();
+                worker_item = NULL;
+            }
             worker_mode = false;
             this->send.status("200 OK")->done(1);
             status = Status::net;
@@ -342,6 +346,9 @@ void Connect::header_completed() {
         case RequestType::worker:
             worker_mode = true;
             rpc_add();
+            break;
+        case RequestType::pub:
+            pub(name);
             break;
         case RequestType::result:
             if(id.empty()) id.set(path);
@@ -417,6 +424,10 @@ void Connect::rpc_result(ISlice &id) {
         } else {
             if(server->log & 2) std::cout << ltime() << "400 Wrong id for /rpc/result\n";
             this->send.status("400 Wrong id")->done(-1);
+        }
+        if(worker_item) {
+            worker_item->pop();
+            worker_item = NULL;
         }
     }
     status = Status::net;
@@ -537,6 +548,35 @@ void Connect::send_help() {
     }
     send.status("200 OK")->done(res);
 }
+
+void Connect::pub(ISlice &name) {
+    QueueLine *ql = server->get_queue(name);
+    if(!ql) {
+        if(server->log & 4) std::cout << ltime() << "404 no method " << name.as_string() << std::endl;
+        this->send.status("404 Not Found")->done(-32601);
+        return;
+    }
+
+    LOCK _l(ql->workers.lock);
+    auto *item = ql->workers.head;
+    for(;item;item=item->next) {
+        auto *worker = item->conn;
+        if(worker->status != Status::worker_wait_job) continue;
+
+        worker->mutex.lock();
+        if(worker->status != Status::worker_wait_job) {
+            worker->mutex.unlock();
+            continue;
+        }
+        worker->status = Status::busy;
+        worker->mutex.unlock();
+
+        if(worker->worker_mode) worker->status = Status::worker_mode_async;
+        else worker->status = Status::net;
+        worker->send.status("200 OK")->header("Name", name)->header("Async", Slice("true"))->done(this->body);
+    }
+    this->send.status("200 OK")->done(1);
+};
 
 
 /* HttpSender */

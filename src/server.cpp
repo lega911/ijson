@@ -635,6 +635,14 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     }
 
     ql->mutex.unlock();
+
+    if(worker->worker_mode) {
+        if(!worker->worker_item) worker->worker_item = ql->workers.push(worker);
+    } else if(worker->noid || worker->status == Status::worker_wait_job) {
+        if(worker->worker_item) worker->worker_item->pop();
+        worker->worker_item = ql->workers.push(worker);
+    }
+
     return result;
 };
 
@@ -822,6 +830,10 @@ int Loop::worker_result_noid(Connect *worker) {
 };
 
 void Loop::on_disconnect(Connect *conn) {
+    if(conn->worker_item) {
+        conn->worker_item->pop();
+        conn->worker_item = NULL;
+    }
     if(conn->status == Status::client_wait_result && !conn->id.empty()) {
         auto it = server->wait_response.find(conn->id.as_string());
         if(it != server->wait_response.end()) {
