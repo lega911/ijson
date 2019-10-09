@@ -140,7 +140,7 @@ void Connect::on_recv(char *buf, int size) {
             priority = 0;
             required_worker = 0;
             no_response = false;
-            type.reset();
+            type = RequestType::none;
             if(status != Status::worker_wait_result) {
                 if(worker_mode) {
                     if(status != Status::worker_mode_async) THROW("Wrong status for worker");
@@ -160,7 +160,11 @@ void Connect::on_recv(char *buf, int size) {
             }
             http_step = HTTP_HEADER;
         } else if(http_step == HTTP_HEADER) {
-            this->read_header(line);
+            try {
+                this->read_header(line);
+            } catch (const error::InvalidData &e) {
+                this->send.status("400 Invalid data")->done(-32700);
+            }
         }
     }
 
@@ -197,16 +201,32 @@ int Connect::read_method(Slice &line) {
     return 0;
 }
 
+void Connect::_set_type(ISlice &name) {
+    if(name == "get") {
+        type = RequestType::get;
+    } else if (name == "get+") {
+        type = RequestType::get_plus;
+    } else if (name == "worker") {
+        type = RequestType::worker;
+    } else if (name == "async") {
+        type = RequestType::async;
+    } else if (name == "pub") {
+        type = RequestType::pub;
+    } else if (name == "result") {
+        type = RequestType::result;
+    } else throw error::InvalidData();
+}
+
 void Connect::read_header(Slice &data) {
     if(data.starts_with("Content-Length: ")) {
         data.remove(16);
         content_length = data.atoi();
     } else if(data.starts_with("Type: ")) {
         data.remove(6);
-        type = data;
+        _set_type(data);
     } else if(data.starts_with("X-Type: ")) {
         data.remove(8);
-        type = data;
+        _set_type(data);
     } else if(data.starts_with("Name: ")) {
         data.remove(6);
         name.set(data);
@@ -287,7 +307,7 @@ void Connect::header_completed() {
     }
 
     if(noid) {
-        if(this->path != "rpc/result" && type != "result") {
+        if(this->path != "rpc/result" && type != RequestType::result) {
             this->send.status("400 Result expected")->done(-1);
             return;
         };
@@ -306,24 +326,28 @@ void Connect::header_completed() {
     Slice id(this->id);
     json.load(this->body);
 
-    if(!type.empty()) {
+    if(type != RequestType::none) {
         name.set(path);
-        if(type == "async") {
+        switch(type) {
+        case RequestType::async:
             no_response = true;
             loop->client_request(name, this);
-        } else if(type == "get+") {
+            break;
+        case RequestType::get_plus:
             this->noid = true;
             this->fail_on_disconnect = true;
+        case RequestType::get:
             rpc_add();
-        } else if(type == "get") {
-            rpc_add();
-        } else if(type == "worker") {
+            break;
+        case RequestType::worker:
             worker_mode = true;
             rpc_add();
-        } else if(type == "result") {
+            break;
+        case RequestType::result:
             if(id.empty()) id.set(path);
             rpc_result(id);
-        } else {
+            break;
+        default:
             this->send.status("400 Wrong type")->done(-32602);
         }
         return;

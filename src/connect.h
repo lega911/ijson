@@ -10,6 +10,15 @@ enum class Status {
     net, worker_wait_job, worker_wait_result, migration, client_wait_result, busy, worker_mode_async
 };
 
+enum class RequestType {
+    none = 0,
+    get = 1,
+    get_plus = 2,
+    worker = 3,
+    async = 4,
+    pub = 5,
+    result = 6
+};
 
 #define HTTP_START 0
 #define HTTP_HEADER 1
@@ -86,9 +95,10 @@ private:
     Buffer buffer;
     Buffer path;
     Slice header_option;
+    void _set_type(ISlice &name);
 public:
     Buffer name;
-    Slice type;
+    RequestType type = RequestType::none;
     Status status = Status::net;
     Buffer body;
     Buffer id;
