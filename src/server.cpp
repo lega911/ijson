@@ -497,8 +497,24 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 
     if(!worker->info.empty()) ql->info.set(worker->info);
 
+    if(!worker->worker_mode && worker->worker_item && worker->worker_sub_name.compare(name)) {
+        worker->worker_item->pop();
+        worker->worker_item = NULL;
+
+        GC gc;
+        for(auto const &it : worker->direct_message) {
+            gc.add(it, GC::DirectMessage);
+        }
+        worker->direct_message.clear();
+    }
+
+    if(!worker->direct_message.empty()) {
+        worker->write_mode(true);
+        return 1;
+    }
+
     Message *msg = NULL;
-    GC<Message> gc;
+    GC gc;
     int result;
 
     ql->last_worker = get_time_sec();
@@ -523,7 +539,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
                 }
             }
             it = q->clients.erase(it);
-            gc.add(msg);
+            gc.add(msg, GC::Message);
 
             if(!msg->conn) break;
             Connect *client = msg->conn;
@@ -634,14 +650,12 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         result = 0;
     }
 
-    ql->mutex.unlock();
-
-    if(worker->worker_mode) {
-        if(!worker->worker_item) worker->worker_item = ql->workers.push(worker);
-    } else if(worker->noid || worker->status == Status::worker_wait_job) {
-        if(worker->worker_item) worker->worker_item->pop();
-        worker->worker_item = ql->workers.push(worker);
+    if(!worker->worker_item) {
+        if(worker->worker_mode || worker->noid || worker->status == Status::worker_wait_job) worker->worker_item = ql->workers.push(worker);
+        if(!worker->worker_mode && worker->noid) worker->worker_sub_name.set(name);
     }
+
+    ql->mutex.unlock();
 
     return result;
 };
@@ -834,6 +848,15 @@ void Loop::on_disconnect(Connect *conn) {
         conn->worker_item->pop();
         conn->worker_item = NULL;
     }
+
+    if(!conn->direct_message.empty()) {
+        GC gc;
+        for(auto const &it : conn->direct_message) {
+            gc.add(it, GC::DirectMessage);
+        }
+        conn->direct_message.clear();
+    }
+
     if(conn->status == Status::client_wait_result && !conn->id.empty()) {
         auto it = server->wait_response.find(conn->id.as_string());
         if(it != server->wait_response.end()) {

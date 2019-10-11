@@ -27,6 +27,22 @@ enum class RequestType {
 #define HTTP_REQUEST_COMPLETED 3
 
 
+class DirectMessage {
+private:
+    std::mutex lock;
+public:
+    Buffer data;
+    int priority = 0;
+    std::atomic_uint32_t counter = 0;
+    void link() {
+        counter++;
+    };
+    u32 unlink() {
+        return --counter;
+    };
+};
+
+
 class HttpSender {
 private:
     Connect *conn = NULL;
@@ -114,6 +130,8 @@ public:
     Json json;
     Slice info;
     WorkerItem *worker_item = NULL;
+    Buffer worker_sub_name;
+    std::deque<DirectMessage*> direct_message;
 
     int read_method(Slice &line);
     void read_header(Slice &data);

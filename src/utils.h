@@ -40,19 +40,22 @@ public:
 };
 
 
-template <class T>
 class GC {
 public:
-    void add(T *ptr) {
-        _list.push_back(ptr);
-    }
-    ~GC() {
-        for(auto const & ptr : _list) {
-            delete ptr;
-        }
-    }
+    static const int Message = 1;
+    static const int DirectMessage = 2;
+
+    void add(void *ptr, int type);
+    void release();
+    GC() {};
+    GC(void *ptr, int type) { add(ptr, type); };
+    ~GC() { release(); };
 private:
-    std::vector<T*> _list;
+    struct _gc_item {
+        void *ptr;
+        int type;
+    };
+    std::vector<_gc_item> _list;
 };
 
 

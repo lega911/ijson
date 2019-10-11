@@ -43,6 +43,15 @@ void Connect::on_send() {
         int sent = this->raw_send(send_buffer.ptr(), send_buffer.size());
         if(sent < 0) THROW("Not implemented: sent < 0");
         send_buffer.remove_left(sent);
+    } else if(!direct_message.empty()) {
+        auto *dm = direct_message.front();
+        direct_message.pop_front();
+        GC gc(dm, GC::DirectMessage);
+
+        int sent = this->raw_send(dm->data.ptr(), dm->data.size());
+        if(sent < 0) THROW("Not implemented: sent < 0");
+
+        if(sent != dm->data.size()) send_buffer.add(&dm->data.ptr()[sent], dm->data.size() - sent);
     }
 
     if(send_buffer.size() == 0) {
@@ -425,10 +434,6 @@ void Connect::rpc_result(ISlice &id) {
             if(server->log & 2) std::cout << ltime() << "400 Wrong id for /rpc/result\n";
             this->send.status("400 Wrong id")->done(-1);
         }
-        if(worker_item) {
-            worker_item->pop();
-            worker_item = NULL;
-        }
     }
     status = Status::net;
 }
@@ -557,25 +562,50 @@ void Connect::pub(ISlice &name) {
         return;
     }
 
+    auto *dm = new DirectMessage();
+    dm->link();
+    Buffer *data = &dm->data;
+    data->add("HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nName: ");
+    data->add(name);
+    data->add("\r\nAsync: true\r\n");
+    if(body.size() == 0) {
+        data->add("Content-Length: 0\r\n\r\n");
+    } else {
+        data->add("Content-Length: ");
+        data->add_number(body.size());
+        data->add("\r\n\r\n");
+        data->add(body);
+    };
+
     LOCK _l(ql->workers.lock);
     auto *item = ql->workers.head;
     for(;item;item=item->next) {
         auto *worker = item->conn;
-        if(worker->status != Status::worker_wait_job) continue;
 
-        worker->mutex.lock();
-        if(worker->status != Status::worker_wait_job) {
+        bool send = false;
+        if(worker->status == Status::worker_wait_job) {
+            worker->mutex.lock();
+            if(worker->status == Status::worker_wait_job) {
+                worker->status = Status::busy;
+                send = true;
+            }
             worker->mutex.unlock();
-            continue;
-        }
-        worker->status = Status::busy;
-        worker->mutex.unlock();
+        };
 
-        if(worker->worker_mode) worker->status = Status::worker_mode_async;
-        else worker->status = Status::net;
-        worker->send.status("200 OK")->header("Name", name)->header("Async", Slice("true"))->done(this->body);
+        if(send) {
+            if(worker->worker_mode) worker->status = Status::worker_mode_async;
+            else worker->status = Status::net;
+
+            dm->link();
+            worker->direct_message.push_back(dm);
+            worker->write_mode(true);
+        } else if(worker->noid) {
+            dm->link();
+            worker->direct_message.push_back(dm);
+        }
     }
     this->send.status("200 OK")->done(1);
+    if(dm->unlink() == 0) delete dm;
 };
 
 

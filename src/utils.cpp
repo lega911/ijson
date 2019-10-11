@@ -3,6 +3,7 @@
 #include <sys/time.h>
 #include <ctime>
 #include "server.h"
+#include "connect.h"
 
 
 long get_time() {
@@ -78,3 +79,32 @@ void generate_id(Buffer &r) {
     r.clear();
     r.add_hex((++index << 16) + (std::rand() & 0xffff));
 }
+
+
+/* GC */
+
+void GC::add(void *ptr, int type) {
+    _list.push_back({ptr, type});
+};
+
+void GC::release() {
+    for(auto const & i : _list) {
+        switch(i.type) {
+        case 1:
+            {
+                auto *it = (::Message*)i.ptr;
+                delete it;
+                break;
+            }
+        case 2:
+            {
+                auto *it = (::DirectMessage*)i.ptr;
+                if(it->unlink() == 0) {
+                    delete it;
+                }
+                break;
+            }
+        }
+    }
+    _list.clear();
+};
