@@ -446,3 +446,63 @@ def test8_worker_id2():
     post('/' + w1.headers['id'], type='result', json={'result': 'w1'})
     time.sleep(0.1)
     assert c0.json()['result'] == 'w1'
+
+
+def test9_pubsub():
+    error = 0
+    stopped = 0
+    r_sum = [0] * 6
+
+    def go(type, index):
+        @run(0)
+        def worker_get():
+            nonlocal error, stopped
+            if type == 'get':
+                get = requests.get
+            else:
+                s = requests.Session()
+                get = s.get
+            while True:
+                r = get(L + '/test9/pub', headers={'Type': type})
+                if not r.headers['Async']:
+                    error += 1
+                msg = r.json()
+                if msg['data'] == 'stop':
+                    break
+                r_sum[index] += msg['data']
+                time.sleep(0.1)
+            stopped += 1
+    
+    go('get', 0)
+    go('get', 1)
+    go('get+', 2)
+    go('get+', 3)
+    go('worker', 4)
+    go('worker', 5)
+
+    s = requests.Session()
+    def client(data):
+        r = s.post(L + '/test9/pub', headers={'Type': 'pub'}, json=data)
+        assert r.status_code == 200
+    
+    time.sleep(0.2)
+    client({'data': 1})
+    time.sleep(0.2)
+    assert r_sum == [1, 1, 1, 1, 1, 1]
+
+    client({'data': 2})
+    time.sleep(0.2)
+    assert r_sum == [3, 3, 3, 3, 3, 3]
+
+    client({'data': 3})
+    client({'data': 4})
+    client({'data': 5})
+    client({'data': 6})
+    client({'data': 7})
+    time.sleep(0.7)
+    
+    assert r_sum == [6, 6, 28, 28, 28, 28]
+
+    client({'data': 'stop'})
+    time.sleep(0.2)
+    assert stopped == 6
