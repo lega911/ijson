@@ -6,6 +6,7 @@ Inverted Json is a job server which helps you to organize RPC communication betw
 * Docker image is just **2.6Mb** (slim version)
 * API is easy and compact (look at examples, quickstart will be soon)
 * It's **a single point of access**: [Client] -> [Inverted Json] <- [Worker] (clients and workers connect to Inverted Json), to simplify the configuration for projects.
+* Supported platforms: Linux, FreeBSD, MacOS, Docker.
 
 #### Benchmark
 <a id="benchmark"></a>
