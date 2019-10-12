@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.4
+* Publish message to all workers - header `"Type: pub"`
 * Set type of request - header `"Type"/"X-Type"`, e.g. `"Type: async"`, supported: *async, get, get+, worker, result*
 * Call a certain worker by id, header `"Worker-ID: <worker id>"`
 * `/rpc/details` displays worker ids
