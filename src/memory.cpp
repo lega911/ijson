@@ -5,7 +5,7 @@
 
 
 #ifdef DEBUG
-    std::atomic_int32_t count = 0;
+    std::atomic<u32> count(0);
     i32 get_memory_allocated() {
         return count.load();
     }

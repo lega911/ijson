@@ -33,7 +33,8 @@ private:
 public:
     Buffer data;
     int priority = 0;
-    std::atomic_uint32_t counter = 0;
+    std::atomic<u32> counter;
+    DirectMessage() : counter(0) {};
     void link() {
         counter++;
     };

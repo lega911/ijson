@@ -23,3 +23,7 @@ docker_slim:
 test:
 	cd tests; pytest -v -s main.py
 	cd tests; pytest -v -s main4.py
+make_builder_u16:
+	docker build -t ijson_builder_u16 ./docker/builder_u16
+build_u16:
+	docker run -it --rm -v `pwd`:/cpp -w /cpp ijson_builder_u16 make build
