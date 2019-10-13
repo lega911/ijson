@@ -540,6 +540,7 @@ void Connect::send_help() {
         }
 
         for(int i=ql->name.size();i<20;i++) res.add(" ", 1);
+        res.add(" ", 1);
         res.add_number(client_count);
         res.add("/");
         res.add_number(worker_count);
