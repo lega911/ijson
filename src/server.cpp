@@ -609,7 +609,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
         if(!msg->conn) {
             if(worker->worker_mode) worker->status = Status::worker_mode_async;
             else worker->status = Status::net;
-            worker->send.status("200 OK")->header("Name", name)->header("Async", Slice("true"))->done(*msg->buf);
+            worker->send.status("200 OK")->header("Name", msg->name)->header("Async", Slice("true"))->done(*msg->buf);
         } else {
             auto client = msg->conn;
             if(worker->fail_on_disconnect) {
@@ -618,9 +618,9 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             }
             if(worker->noid) {
                 worker->status = Status::worker_wait_result;
-                worker->send.status("200 OK")->header("Name", name)->done(client->body);
+                worker->send.status("200 OK")->header("Name", client->name)->done(client->body);
             } else {
-                worker->send.status("200 OK")->header("Id", client->id)->header("Name", name)->done(client->body);
+                worker->send.status("200 OK")->header("Id", client->id)->header("Name", client->name)->done(client->body);
                 server->wait_lock.lock();
                 server->wait_response[sid] = client;
                 server->wait_lock.unlock();
@@ -786,8 +786,13 @@ int Loop::client_request(ISlice name, Connect *client) {
         Message *msg = new Message();
         msg->priority = client->priority;
         msg->required_worker = client->required_worker;
-        if(client->no_response) msg->attach_buffer(&client->body);
-        else msg->attach_client(client);
+        if(client->no_response) {
+            msg->name.set(name);
+            msg->attach_buffer(&client->body);
+        } else {
+            client->name.set(name);
+            msg->attach_client(client);
+        }
         for(auto it=clients->crbegin(); it!=clients->crend(); it++) {
             if(msg->priority <= (*it)->priority) {
                 clients->insert(it.base(), msg);

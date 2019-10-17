@@ -25,6 +25,7 @@ public:
     u64 required_worker = 0;
     Connect *conn = NULL;
     Buffer *buf = NULL;
+    Buffer name;
 
     void attach_client(Connect *n_conn);
     void attach_buffer(Buffer *n_buf);

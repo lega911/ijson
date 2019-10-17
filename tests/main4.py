@@ -506,3 +506,62 @@ def test9_pubsub():
     client({'data': 'stop'})
     time.sleep(0.2)
     assert stopped == 6
+
+
+def test10():
+    names = []
+
+    @run(0)
+    def worker():
+        s = requests.Session()
+        while True:
+            r = s.post(L + '/test10/*', headers={'Type': 'get+'})
+            name = r.headers['Name']
+            if name == 'test10/exit':
+                s.post(L, data='exit', headers={'Type': 'result'})
+                break
+
+            value = r.json()['value'] if r.content else None
+            names.append((name, value))
+            s.post(L, data='ok', headers={'Type': 'result'})
+            if value == 3:
+                time.sleep(0.5)
+            elif value in (7, 8, 9):
+                time.sleep(0.2)
+
+    time.sleep(0.1)
+    assert post('/test10/one', json={'value': 1}).text == 'ok'
+    assert names[0] == ('test10/one', 1)
+
+    time.sleep(0.1)
+    assert post('/test10/two/system', json={'value': 2}).text == 'ok'
+    assert names[1] == ('test10/two/system', 2)
+
+    time.sleep(0.1)
+    assert post('/test10/delay', json={'value': 3}).text == 'ok'
+    assert names[2] == ('test10/delay', 3)
+
+    assert post('/test10/check4', json={'value': 4}).text == 'ok'
+    assert names[3] == ('test10/check4', 4)
+
+    time.sleep(0.1)
+    assert post('/test10/async5', json={'value': 5}, type='async').status_code == 200
+    time.sleep(0.1)
+    assert names[4] == ('test10/async5', 5)
+
+    time.sleep(0.1)
+    assert post('/test10/async6', json={'value': 6}, type='async').status_code == 200
+    time.sleep(0.1)
+    assert names[5] == ('test10/async6', 6)
+
+    assert post('/test10/async7', json={'value': 7}, type='async').status_code == 200
+    assert post('/test10/async8', json={'value': 8}, type='async').status_code == 200
+    assert post('/test10/async9', json={'value': 9}, type='async').status_code == 200
+    assert post('/test10/async10', json={'value': 10}, type='async').status_code == 200
+
+    assert post('/test10/exit').text == 'exit'
+
+    assert names[6] == ('test10/async7', 7)
+    assert names[7] == ('test10/async8', 8)
+    assert names[8] == ('test10/async9', 9)
+    assert names[9] == ('test10/async10', 10)
