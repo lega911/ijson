@@ -68,6 +68,38 @@ public:
         }
         return s;
     }
+    i64 atoi() const {
+        if(!size()) throw error::NoData();
+        char *p = ptr();
+        char *end = p + size();
+        bool negative = false;
+        if(*p == '-') {
+            negative = true;
+            if(size() < 2) throw error::InvalidData();
+            p++;
+        }
+        i64 value = 0;
+        for(;p < end; p++) {
+            char a = *p - '0';
+            if(a < 0 || a > 9) throw error::InvalidData();
+            value = value * 10 + a;
+        }
+        return negative?-value:value;
+    }
+    i64 hextoi() const {
+        if(!size()) throw error::NoData();
+        i64 value = 0;
+        char *p = ptr();
+        char *end = p + size();
+        for(;p < end; p++) {
+           char a = *p;
+           if(a >= '0' && a <= '9') value = (value << 4) + a - '0';
+           else if(a >= 'A' && a <= 'F') value = (value << 4) + a - 'A' + 10;
+           else if(a >= 'a' && a <= 'f') value = (value << 4) + a - 'a' + 10;
+           else throw error::InvalidData();
+        }
+        return value;
+    }
 };
 
 
@@ -140,24 +172,6 @@ public:
             break;
         }
         _size = i + 1;
-    }
-    int atoi() {
-        char *p = ptr();
-        if(!_size) throw error::NoData();
-        int value = 0, i = 0, n;
-        bool negative = false;
-        if(p[0] == '-') {
-            negative = true;
-            i = 1;
-            if(_size < 2) throw error::InvalidData();
-        }
-        for(;i<_size;i++) {
-            n = p[i] - '0';
-            if(n < 0 || n > 9) throw error::InvalidData();
-            value = value * 10 + n;
-        }
-        if(negative) return -value;
-        return value;
     }
 };
 

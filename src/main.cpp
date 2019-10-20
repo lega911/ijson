@@ -31,7 +31,6 @@ const char *help_info = "\n\
         128 - debugging info\n\
 ";
 
-
 int main(int argc, char** argv) {
     #ifdef DEBUG
         catch_fatal();

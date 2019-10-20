@@ -25,6 +25,24 @@ void json::unescape(Buffer &s, int start) {
             case 'r':
                 a  ='\r';
                 break;
+            case 'u':
+                if(i + 4 < s.size()) {
+                    Slice hex(&p[i + 1], 4);
+                    i += 4;
+                    auto code = hex.hextoi();
+                    std::cout << code << std::endl;
+                    if(code <= 0x7f) a = code;
+                    else if(code <= 0x7ff) {
+                        p[n++] = 0xc0 | (code >> 6);
+                        a = 0x80 | (code & 0x3f);
+                    } else {
+                        p[n++] = 0xe0 | (code >> 12);
+                        p[n++] = 0x80 | ((code >> 6) & 0x3f);
+                        a = 0x80 | (code & 0x3f);
+                    }
+                }
+
+                break;
             // case '"':
             // case '/':
             // case '\\':
@@ -34,8 +52,7 @@ void json::unescape(Buffer &s, int start) {
             prefix = true;
             continue;
         }
-        p[n] = a;
-        n++;
+        p[n++] = a;
     }
     s.resize(0, n);
 }

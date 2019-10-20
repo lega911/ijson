@@ -496,8 +496,12 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     Queue *q;
 
     if(!worker->info.empty()) {
-        ql->info.set(worker->info);
-        json::unescape(ql->info);
+        try {
+            ql->info.set(worker->info);
+            json::unescape(ql->info);
+        } catch (Exception &e) {
+            ql->info.clear();
+        };
     }
 
     if(!worker->worker_mode && worker->worker_item && worker->worker_sub_name.compare(name)) {
