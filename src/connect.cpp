@@ -548,7 +548,6 @@ void Connect::send_help() {
             res.add("  ");
             int start = res.size();
             res.add(ql->info);
-            json::unescape(res, start);
         }
         res.add("\n");
     }

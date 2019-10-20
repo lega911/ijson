@@ -495,7 +495,10 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     QueueLine *ql = server->get_queue(name, true);
     Queue *q;
 
-    if(!worker->info.empty()) ql->info.set(worker->info);
+    if(!worker->info.empty()) {
+        ql->info.set(worker->info);
+        json::unescape(ql->info);
+    }
 
     if(!worker->worker_mode && worker->worker_item && worker->worker_sub_name.compare(name)) {
         worker->worker_item->pop();

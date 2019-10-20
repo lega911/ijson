@@ -7,12 +7,34 @@ void json::unescape(Buffer &s, int start) {
     int n = start;
     bool prefix = false;
     for(int i=start;i<s.size();i++) {
-        if(!prefix && p[i] == '\\') {
+        char a = p[i];
+        if(prefix) {
+            switch(a) {
+            case 'b':
+                a = 8;
+                break;
+            case 't':
+                a = 9;
+                break;
+            case 'n':
+                a = '\n';
+                break;
+            case 'f':
+                a = '\f';
+                break;
+            case 'r':
+                a  ='\r';
+                break;
+            // case '"':
+            // case '/':
+            // case '\\':
+            };
+            prefix = false;
+        } else if(a == '\\') {
             prefix = true;
             continue;
         }
-        prefix = false;
-        p[n] = p[i];
+        p[n] = a;
         n++;
     }
     s.resize(0, n);
