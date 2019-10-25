@@ -130,7 +130,7 @@ Lock Server::autolock(int except) {
 
 
 QueueLine *Server::get_queue(ISlice key, bool create) {
-    int n = _mapper.find(key);
+    u16 n = _mapper.find(key);
     if(n) return _queue_list[n-1];
     if(!create) return NULL;
 
@@ -140,12 +140,47 @@ QueueLine *Server::get_queue(ISlice key, bool create) {
 
     QueueLine *ql = new QueueLine(threads);
     ql->name.set(key);
-    _queue_list.push_back(ql);
-    _mapper.add(key, _queue_list.size());
 
+    n = 0;
+    for(u16 i=0;i<_queue_list.size();i++) {
+        if(_queue_list[i] == NULL) {
+            _queue_list[i] = ql;
+            n = i + 1;
+            break;
+        }
+    }
+    if(!n) {
+        _queue_list.push_back(ql);
+        n = _queue_list.size();
+    }
+    _mapper.add(key, n);
     return ql;
 }
 
+void Server::delete_queue(ISlice key) {
+    LOCK _l(global_lock);
+    int n = _mapper.del(key);
+    if(!n) return;
+    auto *ql = _queue_list[n-1];
+    _queue_list[n-1] = NULL;
+
+    GC gc;
+    Message *msg = NULL;
+    ql->mutex.lock();
+    for(int index=0;index<this->threads;index++) {
+        auto q = &ql->queue[index];
+        for(auto const &msg : q->clients) {
+            gc.add(msg, GC::Message);
+            if(!msg->conn) continue;
+            if(!msg->conn->is_closed()) msg->conn->send.status("400 Closed")->done(-1);
+        }
+        for(auto const &worker : q->workers) {
+            worker->unlink();
+            if(!worker->is_closed()) worker->send.status("400 Closed")->done(-1);
+        }
+    }
+    delete ql;
+}
 
 /* Loop */
 
@@ -506,7 +541,6 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 
     if(!worker->worker_mode && worker->worker_item && worker->worker_sub_name.compare(name)) {
         worker->worker_item->pop();
-        worker->worker_item = NULL;
 
         GC gc;
         for(auto const &it : worker->direct_message) {
@@ -856,10 +890,7 @@ int Loop::worker_result_noid(Connect *worker) {
 };
 
 void Loop::on_disconnect(Connect *conn) {
-    if(conn->worker_item) {
-        conn->worker_item->pop();
-        conn->worker_item = NULL;
-    }
+    if(conn->worker_item) conn->worker_item->pop();
 
     if(!conn->direct_message.empty()) {
         GC gc;

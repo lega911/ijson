@@ -18,8 +18,11 @@ enum class RequestType {
     worker = 3,
     async = 4,
     pub = 5,
-    result = 6
+    result = 6,
+    create = 7,
+    del = 8
 };
+
 
 #define HTTP_START 0
 #define HTTP_HEADER 1
@@ -142,4 +145,6 @@ public:
     void rpc_result(ISlice &id);
     void pub(ISlice &name);
     void header_completed();
+    void create_queue(Slice name);
+    void delete_queue(Slice name);
 };

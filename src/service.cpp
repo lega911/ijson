@@ -94,6 +94,7 @@ void Service::_start() {
 void Service::_clean_dead_tasks() {
     LOCK _l(server->global_lock);
     for(const auto &ql : server->_queue_list) {
+        if(ql == NULL) continue;
         if(!ql->mutex.try_lock()) continue;
 
         for(int nloop=0; nloop < server->threads; nloop++) {

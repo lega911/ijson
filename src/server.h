@@ -92,6 +92,7 @@ public:
     Mapper _mapper;
     std::vector<QueueLine*> _queue_list;
     QueueLine *get_queue(ISlice key, bool create=false);
+    void delete_queue(ISlice key);
 
     std::map<std::string, Connect*> wait_response;
     std::mutex wait_lock;

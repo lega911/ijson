@@ -223,6 +223,10 @@ void Connect::_set_type(ISlice &name) {
         type = RequestType::pub;
     } else if (name == "result") {
         type = RequestType::result;
+    } else if (name == "create") {
+        type = RequestType::create;
+    } else if (name == "delete") {
+        type = RequestType::del;
     } else throw error::InvalidData();
 }
 
@@ -305,10 +309,7 @@ void Connect::header_completed() {
     if(worker_mode) {
         if(status != Status::worker_mode_async) loop->worker_result_noid(this);
         if(header_option == "stop") {
-            if(worker_item) {
-                worker_item->pop();
-                worker_item = NULL;
-            }
+            if(worker_item) worker_item->pop();
             worker_mode = false;
             this->send.status("200 OK")->done(1);
             status = Status::net;
@@ -362,6 +363,12 @@ void Connect::header_completed() {
         case RequestType::result:
             if(id.empty()) id.set(path);
             rpc_result(id);
+            break;
+        case RequestType::create:
+            create_queue(path);
+            break;
+        case RequestType::del:
+            delete_queue(path);
             break;
         default:
             this->send.status("400 Wrong type")->done(-32602);
@@ -481,6 +488,7 @@ void Connect::send_details() {
     LOCK _l(server->global_lock);
 
     for(const auto &ql : server->_queue_list) {
+        if(ql == NULL) continue;
         res.add("\"");
         res.add(ql->name);
         res.add("\":{\"last_worker\":");
@@ -524,7 +532,10 @@ void Connect::send_help() {
     res.add("\n\nrpc/add     {name, [option], [info]}\nrpc/result  {[id]}\nrpc/worker  {name, [info]}\nrpc/details\nrpc/help\n\n");
     LOCK _l(server->global_lock);
     std::vector<QueueLine*> list;
-    for(const auto &ql : server->_queue_list) list.push_back(ql);
+    for(const auto &ql : server->_queue_list) {
+        if(ql == NULL) continue;
+        list.push_back(ql);
+    }
     std::sort(list.begin(), list.end(), [](const auto& l,const auto& r) {
         return l->name.compare(r->name) < 0;
     });
@@ -608,6 +619,26 @@ void Connect::pub(ISlice &name) {
     if(dm->unlink() == 0) delete dm;
 };
 
+void Connect::create_queue(Slice name) {
+    if(name.empty()) {
+        this->send.status("400 Wrong queue")->done(-32600);
+        return;
+    }
+    if(name.ptr()[0] == '/') name.remove(1);
+    server->get_queue(name, true);
+    this->send.status("200 OK")->done(1);
+};
+
+void Connect::delete_queue(Slice name) {
+    if(name.empty()) {
+        this->send.status("400 Wrong queue")->done(-32600);
+        return;
+    }
+    if(name.ptr()[0] == '/') name.remove(1);
+    server->delete_queue(name);
+    this->send.status("200 OK")->done(1);
+};
+
 
 /* HttpSender */
 
@@ -666,3 +697,4 @@ void HttpSender::done(int error) {
         done(msg);
     }
 };
+

@@ -105,3 +105,30 @@ u16 Mapper::find(ISlice name) {
         step = _get_step(ptr, next);
     }
 }
+
+u16 Mapper::del(ISlice name) {
+    int next;
+    char *ptr = abuf.load();
+    Step *step = _get_step(ptr, 1);
+    for(int i=0;;i++) {
+        if(i >= name.size()) {
+            auto result = step->end;
+            step->end = 0;
+            return result;
+        }
+        u16 a = name.ptr()[i];
+
+        if(a == '*') {
+            auto result = step->std;
+            step->std = 0;
+            return result;
+        }
+
+        if(a < 32 || a >= 128) return 0;
+        a -= 32;
+
+        next = step->k[a];
+        if(!next) return 0;
+        step = _get_step(ptr, next);
+    }
+}

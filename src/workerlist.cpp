@@ -9,6 +9,7 @@ WorkerItem::WorkerItem(WorkerList *n_list, Connect *n_conn) : list(n_list), conn
 
 WorkerItem::~WorkerItem() {
     conn->unlink();
+    conn->worker_item = NULL;
 };
 
 void WorkerItem::pop() {

@@ -24,6 +24,7 @@ public:
     Mapper(Server *server);
     void add(ISlice name, u16 value);
     u16 find(ISlice name);
+    u16 del(ISlice name);
 private:
     Server *server;
     std::mutex mutex;
