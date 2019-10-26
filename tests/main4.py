@@ -27,6 +27,30 @@ post = make_request('post')
 get = make_request('get')
 
 
+def mem(links):
+    if not isinstance(links, list):
+        links = [links]
+
+    def get_memory():
+        return int(get('/debug').text.split(': ')[1])
+
+    def inner(fn):
+        def wrapper():
+            for link in links:
+                post(link, type='create')
+                post(link, type='delete')
+            time.sleep(0.6)
+            mem = get_memory()
+            fn()
+            for link in links:
+                post(link, type='delete')
+            time.sleep(0.6)
+            assert mem == get_memory()
+        return wrapper
+    return inner
+
+
+@mem('/test/cmd1')
 def test_default():
     clients = [None, None]
 
@@ -65,6 +89,7 @@ def test_default():
     assert response['result'] == 'unix'
 
 
+@mem('/one')
 def test_request_without_id():
     def run_worker():
         r = get('/one', type='get')
@@ -77,6 +102,7 @@ def test_request_without_id():
     assert r.json()['result'] == 'ok'
 
 
+@mem('/test/worker')
 def test_worker_mode():
     def worker():
         s = requests.Session()
@@ -106,6 +132,7 @@ def test_worker_mode():
     assert r['test/worker']['info'] == 'test for worker mode'
 
 
+@mem(['/pattern/*', '/task/revert'])
 def test_pattern():
     h_response = None
 
@@ -170,6 +197,7 @@ def test_pattern():
     assert h_response['result'] == 'ok'
 
 
+@mem('/test4/*')
 def test4():
     h_response = None
 
@@ -199,6 +227,7 @@ def run(delay):
     return wrapper
 
 
+@mem('/test6')
 def test6_priority():
     result = []
 
@@ -244,6 +273,7 @@ def test6_priority():
     assert result == [0, 2, 9, 4, 6, 1, 8, 7, 5, 3]
 
 
+@mem('/test7/async')
 def test7_async():
     is_async = False
     data = None
@@ -313,6 +343,7 @@ def test7_async():
     assert details['test7/async']['clients'] == 0
 
 
+@mem('/test7/async2')
 def test7_async_worker():
     result = 0
     count = 0
@@ -365,6 +396,7 @@ def test7_async_worker():
     assert check3['test7/async2']['workers'] == 0
 
 
+@mem('/test8')
 def test8_worker_id():
     def go(sleep, name, id=None):
         @run(sleep)
@@ -374,7 +406,7 @@ def test8_worker_id():
             if id:
                 headers['Set-ID'] = str(id)
             r = s.get(L + '/test8', headers=headers)
-            s.post(L + '/rpc/result', json={'name': name})
+            s.post(L, json={'name': name}, headers={'Type': 'result'})
 
     go(0, 'linux')
     go(0.1, 'windows')
@@ -411,6 +443,7 @@ def test8_worker_id():
     time.sleep(0.1)
 
 
+@mem('/test8')
 def test8_worker_id2():
     c0 = None
     w0 = None
@@ -448,6 +481,7 @@ def test8_worker_id2():
     assert c0.json()['result'] == 'w1'
 
 
+@mem('/test9/pub')
 def test9_pubsub():
     error = 0
     stopped = 0
@@ -508,6 +542,7 @@ def test9_pubsub():
     assert stopped == 6
 
 
+@mem('/test10/*')
 def test10():
     names = []
 

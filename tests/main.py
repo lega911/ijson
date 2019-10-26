@@ -97,6 +97,10 @@ def test_multimethods():
         time.sleep(0.1)
         assert worker == 'stopped'
 
+    post('/test/cmd2+x15', headers={'Type': 'delete'})
+    post('/test/cmd2', headers={'Type': 'delete'})
+    post('/stop', headers={'Type': 'delete'})
+
 
 def test_request_without_id():
     def run_worker():
@@ -223,6 +227,8 @@ def test4():
     r = post('/test4/sum', json={'value': [1, 2, 3, 4]})
     assert r.status_code == 503
 
+    post('/test4/*', headers={'Type': 'delete'})
+
 
 def test5():
     response = None
@@ -245,6 +251,8 @@ def test5():
     th.join()
     assert response.status_code == 200
     assert response.json()['result'] == 'ok'
+
+    post('/test5/command', headers={'Type': 'delete'})
 
 
 def run(delay):
