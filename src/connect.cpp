@@ -361,7 +361,7 @@ void Connect::header_completed() {
             pub(name);
             break;
         case RequestType::result:
-            if(id.empty()) id.set(path);
+            if(id.empty() && path != "/") id.set(path);
             rpc_result(id);
             break;
         case RequestType::create:
