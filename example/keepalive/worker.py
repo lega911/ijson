@@ -1,10 +1,9 @@
 
 import requests
 
-with requests.Session() as session:
+with requests.Session() as s:
     while True:
-        request = session.post('http://127.0.0.1:8001/rpc/add', json={'params': {'name': '/test/command', 'id': False}}).json()
+        req = s.post('http://127.0.0.1:8001/test/command', headers={'Type': 'get+'}).json()
 
-        session.post('http://127.0.0.1:8001/rpc/result', json={
-            'result': request['params'] + ' world!'
-        })
+        response = {'result': req['params'] + ' world!'}
+        s.post('http://127.0.0.1:8001', json=response, headers={'Type': 'result'})

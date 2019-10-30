@@ -2,9 +2,9 @@
 import requests
 
 while True:
-    request = requests.post('http://127.0.0.1:8001/rpc/add', json={'name': '/test/command'}).json()
+    req = requests.post('http://127.0.0.1:8001/test/command', headers={'Type': 'get'}).json()
     response = {
-        'id': request['id'],
-        'result': request['params'] + ' world!'
+        'id': req['id'],
+        'result': req['params'] + ' world!'
     }
-    requests.post('http://127.0.0.1:8001/rpc/result', json=response)
+    requests.post('http://127.0.0.1:8001/', json=response, headers={'Type': 'result'})

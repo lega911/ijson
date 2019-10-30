@@ -2,7 +2,7 @@
 import requests
 
 s = requests.Session()
-data = {'name': 'msg/hello'}  # add command 'msg/hello' on first request
+req = s.post('http://127.0.0.1:8001/msg/hello', headers={'Type': 'worker'}).json()
 while True:
-    task = s.post('http://127.0.0.1:8001/rpc/worker', json=data).json()
-    data = {'result': 'Hello ' + task['name'] + '!'}
+    result = {'result': 'Hello ' + req['name'] + '!'}
+    req = s.post('http://127.0.0.1:8001', json=result).json()
