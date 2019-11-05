@@ -6,6 +6,7 @@
 
 namespace json {
     void unescape(Buffer &s, int start=0);
+    void escape(Buffer &s, int start=0);
 };
 
 

@@ -58,6 +58,28 @@ void json::unescape(Buffer &s, int start) {
 }
 
 
+void json::escape(Buffer &s, int start) {
+    int col = 0;
+    for(int i = start;i<s.size();i++) {
+        if(s.ptr()[i] == '"') col++;
+    }
+    if(!col) return;
+
+    s.resize(0, s.size() + col);
+    char *ptr = s.ptr();
+    for(int i=s.size() -1;i>=start;i--) {
+        char a = ptr[i - col];
+        ptr[i] = a;
+        if(a == '"') {
+            i--;
+            ptr[i] = '\\';
+            col--;
+            if(!col) break;
+        }
+    }
+}
+
+
 bool Json::scan() {
     if(_data.empty()) return false;
     strip();

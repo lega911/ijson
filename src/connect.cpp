@@ -514,7 +514,9 @@ void Connect::send_details() {
 
         if(!ql->info.empty()) {
             res.add(",\"info\":\"");
+            int start = res.size();
             res.add(ql->info);
+            json::escape(res, start);
             res.add("\"");
         }
         res.add("},\n");
