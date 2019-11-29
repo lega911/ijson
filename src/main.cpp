@@ -4,22 +4,12 @@
 
 
 const char *help_info = "\n\
+Start options:\n\
     --host [ip][:port], default 127.0.0.1:8001\n\
     --filter 127.0.0.1/32\n\
-    --log <option>\n\
     --jsonrpc2\n\
     --threads <number>\n\
-\n\
-    --help\n\
-    --version\n\
-\n\
-    /rpc/add     {name, [option], [info]}\n\
-    /rpc/result  {[id]}\n\
-    /rpc/worker  {name, [info]}\n\
-    /rpc/details\n\
-    /rpc/help\n\
-\n\
-    --log\n\
+    --log <mask>\n\
         -1 - all options\n\
         1 - exceptions, critical errors\n\
         2 - errors / filtered / invalid request / wrong http request / error parsing\n\
@@ -29,6 +19,33 @@ const char *help_info = "\n\
         32 - recv / send content\n\
         64 - balancing info\n\
         128 - debugging info\n\
+    --help\n\
+    --version\n\
+\n\
+Type of request (header type/x-type):\n\
+  \"type: get\" - get a task\n\
+  \"type: get+\" - get a task with keep-alive\n\
+  \"type: worker\" - worker mode\n\
+  \"type: async\" - send a command async\n\
+  \"type: pub\" - publish a message (send message to all workers)\n\
+  \"type: result\" - result from worker to client\n\
+  \"type: create\" - create a queue\n\
+  \"type: delete\" - delete a queue\n\
+\n\
+Another options (header):\n\
+  \"priority: 15\" - set priority for request\n\
+  \"set-id: 15\" - set id for worker\n\
+  \"worker-id: 15\" - call worker with specific id\n\
+\n\
+rpc/details  - get details in json\n\
+\n\
+Example:\n\
+  Get command:\n\
+    curl localhost:8001/command -H 'type: get'\n\
+  Call command with id 15:\n\
+    curl localhost:8001/command -d '{\"id\": 15, \"name\": \"world\"}'\n\
+  Send result with id 15:\n\
+    curl localhost:8001/ -H 'type: result' -d '{\"id\": 15, \"result\": \"hello!\"}'\n\
 ";
 
 int main(int argc, char** argv) {

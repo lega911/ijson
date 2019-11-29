@@ -527,11 +527,29 @@ void Connect::send_details() {
 }
 
 
+const char *help_msg = "\n\n\
+Type of request (header type/x-type):\n\
+  \"type: get\" - get a task\n\
+  \"type: get+\" - get a task with keep-alive\n\
+  \"type: worker\" - worker mode\n\
+  \"type: async\" - send a command async\n\
+  \"type: pub\" - publish a message (send message to all workers)\n\
+  \"type: result\" - result from worker to client\n\
+  \"type: create\" - create a queue\n\
+  \"type: delete\" - delete a queue\n\
+\n\
+Another options (header):\n\
+  \"priority: 15\" - set priority for request\n\
+  \"set-id: 15\" - set id for worker\n\
+  \"worker-id: 15\" - call worker with specific id\n\
+\n\
+rpc/details  - get details in json\n\n";
+
 void Connect::send_help() {
     Buffer res(256);
     res.add("ijson ");
     res.add(ijson_version);
-    res.add("\n\nrpc/add     {name, [option], [info]}\nrpc/result  {[id]}\nrpc/worker  {name, [info]}\nrpc/details\nrpc/help\n\n");
+    res.add(help_msg);
     LOCK _l(server->global_lock);
     std::vector<QueueLine*> list;
     for(const auto &ql : server->_queue_list) {
