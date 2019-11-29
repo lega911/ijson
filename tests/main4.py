@@ -260,7 +260,7 @@ def test6_priority():
     request(0.8, 8)
     request(0.9, 9, 4)
 
-    time.sleep(1.5)
+    time.sleep(1.2)
 
     details = post('/rpc/details').json()
     assert details['test6']['clients'] == 9
@@ -269,6 +269,7 @@ def test6_priority():
     for _ in range(9):
         task = worker.post(L + '/test6', headers={'Type': 'get+'}, timeout=TIMEOUT).json()
         worker.post(L, json={'result': task['request']}, headers={'Type': 'result'}, timeout=TIMEOUT)
+        time.sleep(0.05)
     time.sleep(0.5)
     assert result == [0, 2, 9, 4, 6, 1, 8, 7, 5, 3]
 
@@ -600,3 +601,29 @@ def test10():
     assert names[7] == ('test10/async8', 8)
     assert names[8] == ('test10/async9', 9)
     assert names[9] == ('test10/async10', 10)
+
+
+@mem('/test11')
+def test11():
+    count = 0
+    def go(k, v):
+        @run(0)
+        def w():
+            nonlocal count
+            post('/test11', headers={'Type': 'get', k: v})
+            count += 1
+
+    go('set-id', '500')
+    go('SET-ID', '1000')
+    go('Set-ID', '1500')
+    go('sET-iD', '2000')
+    go('sEt-id', '2500')
+
+    time.sleep(0.1)
+
+    details = get('/rpc/details').json()
+    assert set(details['test11']['worker_ids']) == {500,1000,1500,2000,2500}
+
+    get('/test11', type='delete')
+    time.sleep(0.1)
+    assert count == 5

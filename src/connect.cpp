@@ -231,31 +231,31 @@ void Connect::_set_type(ISlice &name) {
 }
 
 void Connect::read_header(Slice &data) {
-    if(data.starts_with("Content-Length: ")) {
+    if(data.starts_with_lc("content-length: ")) {
         data.remove(16);
         content_length = data.atoi();
-    } else if(data.starts_with("Type: ")) {
+    } else if(data.starts_with_lc("type: ")) {
         data.remove(6);
         _set_type(data);
-    } else if(data.starts_with("X-Type: ")) {
+    } else if(data.starts_with_lc("x-type: ")) {
         data.remove(8);
         _set_type(data);
-    } else if(data.starts_with("Name: ")) {
+    } else if(data.starts_with_lc("name: ")) {
         data.remove(6);
         name.set(data);
-    } else if(data.starts_with("Id: ") || data.starts_with("id: ")) {
+    } else if(data.starts_with_lc("id: ")) {
         data.remove(4);
         id.set(data);
-    } else if(data.starts_with("Option: ")) {
+    } else if(data.starts_with_lc("option: ")) {
         data.remove(8);
         header_option = data;
-    } else if(data.starts_with("Priority: ")) {
+    } else if(data.starts_with_lc("priority: ")) {
         data.remove(10);
         priority = data.atoi();
-    } else if(data.starts_with("Worker-ID: ")) {
+    } else if(data.starts_with_lc("worker-id: ")) {
         data.remove(11);
         required_worker = data.atoi();
-    } else if(data.starts_with("Set-ID: ")) {
+    } else if(data.starts_with_lc("set-id: ")) {
         data.remove(8);
         connection_id = data.atoi();
     }

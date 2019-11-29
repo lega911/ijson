@@ -29,6 +29,20 @@ public:
         return true;
     }
 
+    bool starts_with_lc(const char *s) {
+        // lower case
+        int i = 0;
+        while(*s) {
+            if(i >= _size) return false;
+            char a = _ptr[i];
+            if(a >= 'A' && a <= 'Z') a += 'a' - 'A';
+            if(*s != a) return false;
+            i++;
+            s++;
+        }
+        return true;
+    }
+
     bool equal(const char *s) const {
         int i = 0;
         while(*s) {
