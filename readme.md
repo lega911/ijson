@@ -1,5 +1,5 @@
 ### Inverted Json
-Inverted Json is a job server which helps you to organize RPC communication between clients and workers. It helps to save time and resources.
+Inverted Json is a job server which helps you to organize **RPC, MQ, PubSub** communication between clients and workers. It helps to save time and resources.
 * It's **very fast**, it's built with C/C++ and epoll, it's **7+ time faster** than RabbitMQ for RPC ([look at benchmark](#benchmark)).
 * It's **supported by all languages/frameworks**, because it works via http.
 * It **uses much less of memory** (and CPU), less than 50+ time than RabbitMQ ([memory usage](files/mem9.png)).
@@ -35,15 +35,15 @@ docker run -i -p 8001:8001 lega911/ijson
 
 #### Example with curl (client + worker)
 ``` bash
-# 1. a worker publishes rpc command
-curl localhost:8001/rpc/add -d '{"name": "/test/command"}'
+# 1. a worker requests for a command (task) "test/command"
+curl localhost:8001/test/command -H 'type: get'
 
 # 2. a client invokes the command
 curl localhost:8001/test/command -d '{"id": 123, "params": "test data"}'
 
 # the worker receives {"id": 123, "params": "test data"}
 # 3. and sends response with the same id
-curl localhost:8001/rpc/result -d '{"id": 123, "result": "data received"}'
+curl localhost:8001 -H 'type: result' -d '{"id": 123, "result": "data received"}'
 
 # client receives {"id": 123, "result": "data received"}
 ```
@@ -58,12 +58,12 @@ print(response.json())
 ``` python
 while True:
     # get a request
-    request = requests.post('http://127.0.0.1:8001/rpc/add', json={'name': '/test/command'}).json()
+    request = requests.post('http://127.0.0.1:8001/test/command', headers={'Type': 'get'}).json()
     
     # send a response
     response = {
         'id': request['id'],
         'result': request['params'] + ' world!'
     }
-    requests.post('http://127.0.0.1:8001/rpc/result', json=response)
+    requests.post('http://127.0.0.1:8001/', json=response, headers={'Type': 'result'})
 ```
