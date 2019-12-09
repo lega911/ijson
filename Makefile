@@ -1,9 +1,8 @@
-.PHONY: debug release info build clean test docker
+.PHONY: debug release build clean test docker
 
 VERSION = $(shell cat ./version)
 
-info:
-	@echo debug release test
+build: debug release
 debug:
 	g++ src/*.cpp -pthread -std=c++17 -D_VERSION='"$(VERSION)"' -DDEBUG -rdynamic -o ijson.debug
 release:
@@ -12,7 +11,6 @@ release_freebsd:
 	g++ src/*.cpp -pthread -std=c++17 -D_VERSION='"$(VERSION)"' -O2 -D_KQUEUE -o ijson
 release_macos:
 	g++ src/*.cpp -pthread -std=c++17 -D_VERSION='"$(VERSION)"' -O2 -D_KQUEUE -D_NOBALANCER -o ijson
-build: debug release
 clean:
 	rm -f ijson ijson.debug
 docker:
