@@ -61,7 +61,7 @@ public:
 class Server {
 private:
     int _fd;
-    void _listen();
+    int _listen();
     void _accept();
     bool _valid_ip(u32 ip);
 public:

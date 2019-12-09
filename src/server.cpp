@@ -31,7 +31,7 @@ void unblock_socket(int fd) {
 }
 
 
-void Server::_listen() {
+int Server::_listen() {
     _fd = socket(AF_INET, SOCK_STREAM, 0);
     if(_fd < 0) THROW("Error opening socket");
 
@@ -44,10 +44,14 @@ void Server::_listen() {
     serv_addr.sin_addr.s_addr = inet_addr(host.as_string().c_str());
     serv_addr.sin_port = htons(port);
     int r = bind(_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-    if(r < 0) THROW("Error on binding, port is busy?");  // fix vscode highlighting
+    if(r < 0) {
+        if(this->log & 1) std::cout << "Port is busy\n";
+        return -1;
+    }
 
     if(listen(_fd, 64) < 0) THROW("ERROR on listen");
     if(this->log & 8) std::cout << ltime() << "Inverted Json " << ijson_version << " started on " << host.as_string() << ":" << port << std::endl;
+    return 0;
 };
 
 
@@ -98,7 +102,7 @@ void Server::_accept() {
 
 
 void Server::start() {
-    _listen();
+    if(_listen() != 0) return;
 
     if(threads < 1) threads = 1;
     if(threads > 62) {
