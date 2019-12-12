@@ -34,7 +34,7 @@ Documentation
   - rpc/help
   - rpc/details
 
-- FAQ
+- `FAQ`_
 
 .. _Definitions:
 Definitions
@@ -229,3 +229,12 @@ and worker can set id for its connection
 ::
   curl localhost:8001/some/command -H 'type: get' -H 'priority: 15'
 priority by default is 0, positive number is a higher priority, negative number is a lower priority
+
+.. _FAQ:
+FAQ
+***
+
+Threads, how and what's for?
+  On small servers Inverted Json can reach maximum performace with 1 thread (default mode), but if you find that Inverted Json reaches 100% usage of one core, then it make sence to start Inverted Json in multithread mode, you can define number of threads with option `--threads`
+
+If you have any question or proposal you can contact me lega911@gmail.com or via `telegram <https://t.me/olegnechaev/>`_.
