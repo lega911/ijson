@@ -552,14 +552,17 @@ def test10():
         s = requests.Session()
         while True:
             r = s.post(L + '/test10/*', headers={'Type': 'get+'})
-            name = r.headers['Name']
+            name = r.headers['name']
             if name == 'test10/exit':
                 s.post(L, data='exit', headers={'Type': 'result'})
                 break
 
             value = r.json()['value'] if r.content else None
             names.append((name, value))
-            s.post(L, data='ok', headers={'Type': 'result'})
+
+            if r.headers.get('async') != 'true':
+                r2 = s.post(L, data='ok', headers={'Type': 'result'})
+                assert r2.status_code == 200
             if value == 3:
                 time.sleep(0.5)
             elif value in (7, 8, 9):
