@@ -458,7 +458,7 @@ def test8_worker_id2():
     @run(0.1)
     def client():
         nonlocal c0
-        c0 = get('/test8', headers={'Worker-ID': '1000015'}, json={'data': 'c0'})
+        c0 = get('/test8', headers={'Worker-ID': 'worker-id:5'}, json={'data': 'c0'})
 
     time.sleep(0.5)
     assert c0 is None and w0 is None
@@ -475,7 +475,7 @@ def test8_worker_id2():
     assert details['workers'] == 0
     assert details['clients'] == 1
 
-    w1 = get('/test8', type='get', headers={'Set-ID': '1000015'})
+    w1 = get('/test8', type='get', headers={'Set-ID': 'worker-id:5'})
     assert w1.json()['data'] == 'c0'
     post('/' + w1.headers['id'], type='result', json={'result': 'w1'})
     time.sleep(0.1)
@@ -615,14 +615,14 @@ def test11():
 
     go('set-id', '500')
     go('SET-ID', '1000')
-    go('Set-ID', '1500')
-    go('sET-iD', '2000')
+    go('Set-ID', 'x1500x')
+    go('sET-iD', 'aBc2000')
     go('sEt-id', '2500')
 
     time.sleep(0.1)
 
     details = get('/rpc/details').json()
-    assert set(details['test11']['worker_ids']) == {500,1000,1500,2000,2500}
+    assert set(details['test11']['worker_ids']) == {'500','1000','x1500x','aBc2000','2500'}
 
     get('/test11', type='delete')
     time.sleep(0.1)

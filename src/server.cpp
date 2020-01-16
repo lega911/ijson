@@ -89,7 +89,7 @@ void Server::_accept() {
         };
 
         if(connections[fd]) THROW("Connection place is not empty");
-        Connect* conn = new Connect(this, fd, connection_index++);
+        Connect* conn = new Connect(this, fd);
         connections[fd] = conn;
         conn->link();
 
@@ -534,7 +534,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
     QueueLine *ql = server->get_queue(name, true);
     Queue *q;
 
-    if(!worker->info.empty()) {
+    if(worker->info) {
         try {
             ql->info.set(worker->info);
             json::unescape(ql->info);
@@ -542,6 +542,8 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             ql->info.clear();
         };
     }
+
+    if(!worker->connection_id) generate_id(worker->connection_id);
 
     if(!worker->worker_mode && worker->worker_item && worker->worker_sub_name.compare(name)) {
         worker->worker_item->pop();
@@ -830,7 +832,7 @@ int Loop::client_request(ISlice name, Connect *client) {
 
         Message *msg = new Message();
         msg->priority = client->priority;
-        msg->required_worker = client->required_worker;
+        msg->required_worker.move(&client->required_worker);
         if(client->no_response) {
             msg->name.set(name);
             msg->attach_buffer(&client->body);

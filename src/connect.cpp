@@ -147,7 +147,7 @@ void Connect::on_recv(char *buf, int size) {
             if(!worker_mode) name.clear();
             content_length = 0;
             priority = 0;
-            required_worker = 0;
+            required_worker.clear();
             no_response = false;
             type = RequestType::none;
             if(status != Status::worker_wait_result) {
@@ -254,10 +254,10 @@ void Connect::read_header(Slice &data) {
         priority = data.atoi();
     } else if(data.starts_with_lc("worker-id: ")) {
         data.remove(11);
-        required_worker = data.atoi();
+        required_worker.set(data);
     } else if(data.starts_with_lc("set-id: ")) {
         data.remove(8);
-        connection_id = data.atoi();
+        connection_id.set(data);
     }
 }
 
@@ -500,9 +500,16 @@ void Connect::send_details() {
         bool first = true;
         for(int i=0;i<server->threads;i++) {
             for(const auto &w : ql->queue[i].workers) {
-                if(first) first = false;
-                else res.add(",", 1);
-                res.add_number(w->connection_id);
+                if(first) {
+                    first = false;
+                    res.add("\"", 1);
+                } else res.add(",\"", 2);
+                if(w->connection_id) {
+                    int start = res.size();
+                    res.add(w->connection_id);
+                    json::escape(res, start);
+                }
+                res.add("\"", 1);
                 worker_count++;
             }
             client_count += ql->queue[i].clients.size();

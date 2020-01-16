@@ -54,7 +54,11 @@ public:
         return i == _size;
     }
 
-    int compare(ISlice &s) {
+    bool equal(const ISlice &s) const {
+        return compare(s) == 0;
+    }
+
+    int compare(const ISlice &s) const {
         int i = 0;
         int d;
         for(; i<size(); i++) {
@@ -68,10 +72,13 @@ public:
 
     inline bool operator==(const char *s) const {return equal(s);}
     inline bool operator!=(const char *s) const {return !equal(s);}
+    inline bool operator==(const ISlice &s) const {return equal(s);}
+    inline bool operator!=(const ISlice &s) const {return !equal(s);}
     inline bool empty() const {return size() == 0;}
     inline bool valid() const {return _ptr != NULL;}
     inline char* ptr() const {return _ptr;}
     inline int size() const {return _size;}
+    inline operator bool() const {return size() != 0;}
     std::string as_string(int _default=-1) const {
         std::string s;
         if(valid()) {
