@@ -77,6 +77,7 @@ public:
     Connect *connections[MAX_EVENTS];
     Loop **loops;
     std::mutex global_lock;
+    u64 stat_connect = 0;
 
     std::mutex _free_lock;
     std::vector<char*> _free_list;
@@ -95,6 +96,8 @@ public:
 
     std::map<std::string, Connect*> wait_response;
     std::mutex wait_lock;
+
+    u64 stat_starttime;
 };
 
 
@@ -136,4 +139,11 @@ public:
 
     std::vector<Connect*> _queue_to_send;
     void _perform_to_send();
+
+    u64 stat_request = 0;
+    u64 stat_call = 0;
+    u64 stat_result = 0;
+    u64 stat_recv = 0;
+    u64 stat_send = 0;
+    u64 stat_ioevent = 0;
 };

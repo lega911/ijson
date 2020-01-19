@@ -35,7 +35,9 @@ void Connect::read_mode(bool active) {
 }
 
 int Connect::raw_send(const void *buf, uint size) {
-    return ::send(this->fd, buf, size, 0);
+    int sent = ::send(this->fd, buf, size, 0);
+    if(sent > 0) loop->stat_send += sent;
+    return sent;
 }
 
 void Connect::on_send() {
@@ -263,6 +265,7 @@ void Connect::read_header(Slice &data) {
 
 
 void Connect::header_completed() {
+    this->loop->stat_request++;
     this->keep_alive = http_version == 11;
 
     if(server->log & 32) {
@@ -431,6 +434,7 @@ void Connect::rpc_result(ISlice &id) {
         if(server->log & 2) std::cout << ltime() << "400 no id for /rpc/result\n";
         this->send.status("400 No id")->done(-1);
     } else {
+        loop->stat_result++;
         int r = loop->worker_result(id, this);
         if(r == 0) {
             this->send.status("200 OK")->done(1);
@@ -482,11 +486,44 @@ void Connect::rpc_add() {
 
 void Connect::send_details() {
     Buffer res(256);
-    res.add("{\"_version\":\"");
-    res.add(ijson_version);
-    res.add("\",\n");
-    LOCK _l(server->global_lock);
 
+    u64 stat_request = 0;
+    u64 stat_call = 0;
+    u64 stat_result = 0;
+    u64 stat_recv = 0;
+    u64 stat_send = 0;
+    u64 stat_ioevent = 0;
+    for(int i=0; i<server->threads; i++) {
+        stat_request += server->loops[i]->stat_request;
+        stat_call += server->loops[i]->stat_call;
+        stat_result += server->loops[i]->stat_result;
+        stat_recv += server->loops[i]->stat_recv;
+        stat_send += server->loops[i]->stat_send;
+        stat_ioevent += server->loops[i]->stat_ioevent;
+    }
+
+    res.add("{\"$info\":{");
+    res.add("\"version\":\"");
+    res.add(ijson_version);
+    res.add("\",\"uptime\":");
+    res.add_number(get_time_sec() - server->stat_starttime);
+    res.add(",\"connect\":");
+    res.add_number(server->stat_connect);
+    res.add(",\"request\":");
+    res.add_number(stat_request);
+    res.add(",\"call\":");
+    res.add_number(stat_call);
+    res.add(",\"result\":");
+    res.add_number(stat_result);
+    res.add(",\"recv\":");
+    res.add_number(stat_recv);
+    res.add(",\"send\":");
+    res.add_number(stat_send);
+    res.add(",\"io_event\":");
+    res.add_number(stat_ioevent);
+    res.add("},\n");
+
+    LOCK _l(server->global_lock);
     for(const auto &ql : server->_queue_list) {
         if(ql == NULL) continue;
         res.add("\"");
@@ -528,7 +565,7 @@ void Connect::send_details() {
         }
         res.add("},\n");
     };
-    if(res.size() > 2) res.resize(0, res.size() - 2);
+    res.resize(0, res.size() - 2);
     res.add("}");
     send.status("200 OK")->done(res);
 }

@@ -97,12 +97,14 @@ void Server::_accept() {
         if(log & 16) std::cout << ltime() << "connect " << fd << " " << (void*)conn << std::endl;
 
         loops[active_loop]->accept(conn);
+        stat_connect++;
     }
 };
 
 
 void Server::start() {
     if(_listen() != 0) return;
+    stat_starttime = get_time_sec();
 
     if(threads < 1) threads = 1;
     if(threads > 62) {
@@ -262,6 +264,7 @@ void Loop::_loop() {
             if(server->log & 1) std::cout << ltime() << "kqueue wait error: " << errno << std::endl;
             continue;
         }
+        stat_ioevent += nready;
 
         bool need_to_migrate = false;
         for (int i = 0; i < nready; i++) {
@@ -300,6 +303,7 @@ void Loop::_loop() {
                         THROW("recv error");
                     }
                 } else {
+                    stat_recv += size;
                     try {
                         conn->on_recv(buf, size);
                     } catch (const Exception &e) {
@@ -340,6 +344,7 @@ void Loop::_loop() {
             if(server->log & 1) std::cout << ltime() << "epoll_wait error: " << errno << std::endl;
             continue;
         }
+        stat_ioevent += nready;
 
         bool need_to_migrate = false;
         for (int i = 0; i < nready; i++) {
@@ -372,6 +377,7 @@ void Loop::_loop() {
                         THROW("recv error");
                     }
                 } else {
+                    stat_recv += size;
                     try {
                         conn->on_recv(buf, size);
                     } catch (const Exception &e) {
@@ -708,6 +714,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
 };
 
 int Loop::client_request(ISlice name, Connect *client) {
+    stat_call++;
     QueueLine *ql = server->get_queue(name);
     if(!ql) {
         if(server->log & 4) std::cout << ltime() << "404 no method " << name.as_string() << std::endl;
@@ -877,6 +884,7 @@ int Loop::worker_result(ISlice id, Connect *worker) {
 };
 
 int Loop::worker_result_noid(Connect *worker) {
+    stat_result++;
     auto client = worker->client;
     if(!client) THROW("No connected client for noid");
 
