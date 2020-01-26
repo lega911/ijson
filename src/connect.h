@@ -137,6 +137,7 @@ public:
     WorkerItem *worker_item = NULL;
     Buffer worker_sub_name;
     std::deque<DirectMessage*> direct_message;
+    u64 start_time = 0;
 
     int read_method(Slice &line);
     void read_header(Slice &data);

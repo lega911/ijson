@@ -46,6 +46,7 @@ void Connect::on_send() {
         if(sent < 0) THROW("Not implemented: sent < 0");
         send_buffer.remove_left(sent);
     } else if(!direct_message.empty()) {
+        if(server->log & 32) this->start_time = get_time();
         auto *dm = direct_message.front();
         direct_message.pop_front();
         GC gc(dm, GC::DirectMessage);
@@ -270,6 +271,17 @@ void Connect::header_completed() {
 
     if(server->log & 32) {
         Buffer repr(250);
+        if(start_time) {
+            i64 dur = (get_time() - start_time) / 1000;
+            if(dur >= 10000) {
+                repr.add_number(dur / 1000);
+                repr.add("sec ");
+            } else {
+                repr.add_number(dur);
+                repr.add("ms ");
+            }
+            start_time = 0;
+        }
         if(this->body.size() > 150) {
             repr.add(this->body.ptr(), 147);
             repr.add("...");

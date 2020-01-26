@@ -21,7 +21,7 @@ static const char *ijson_version = _VERSION;
 
 #define LOCK std::lock_guard<std::mutex>
 
-long get_time();
+u64 get_time();
 long get_time_sec();
 const char *ltime();
 

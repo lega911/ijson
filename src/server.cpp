@@ -682,6 +682,7 @@ int Loop::_add_worker(Slice name, Connect *worker) {
             }
             result = 1;
         }
+        if(server->log & 32) worker->start_time = get_time();
     } else {
         Queue *q0 = &ql->queue[_nloop];
         if(q0->workers.size()) {
@@ -833,6 +834,7 @@ int Loop::client_request(ISlice name, Connect *client) {
             client->status = Status::client_wait_result;
             worker->status = Status::net;
         }
+        if(server->log & 32) worker->start_time = get_time();
     } else {
         bool inserted = false;
         auto *clients = &ql->queue[_nloop].clients;
