@@ -30,7 +30,7 @@ Here we:<br/>
 
 #### Start ijson
 ``` bash
-docker run -i -p 8001:8001 lega911/ijson
+docker run -it -p 8001:8001 lega911/ijson
 ```
 
 #### Example with curl (client + worker)
