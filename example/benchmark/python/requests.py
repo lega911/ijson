@@ -18,8 +18,9 @@ class Session:
 
         curl.setopt(pycurl.URL, url)
         curl.setopt(pycurl.POST, 1)
-        if data:
-            curl.setopt(pycurl.POSTFIELDS, data)
+        if data is None:
+            data = b''
+        curl.setopt(pycurl.POSTFIELDS, data)
         curl.setopt(pycurl.WRITEDATA, buffer)
         curl.setopt(pycurl.HTTPHEADER, self._to_header(headers))
         curl.perform()
