@@ -507,10 +507,10 @@ void Loop::_close(int fd) {
     if(server->log & 16) std::cout << ltime() << "disconnect socket " << fd << " " << (void*)conn << std::endl;
     if(conn == NULL) THROW("_close: connection is null");
     conn->close();
+    conn->_switch_mode();
     this->on_disconnect(conn);
     conn->unlink();
     server->connections[fd] = NULL;
-    this->set_poll_mode(fd, -1);
     close(fd);
 }
 
