@@ -76,8 +76,8 @@ void Server::_accept() {
             if(log & 1) std::cout << ltime() << "warning: accept error\n";
             continue;
         }
-        if(fd >= MAX_EVENTS) {
-            std::cout << "socket fd (" << fd << ") >= " << MAX_EVENTS << std::endl;
+        if(fd >= MAX_CONNECTS) {
+            std::cout << "socket fd (" << fd << ") >= " << MAX_CONNECTS << std::endl;
             THROW("socket fd error");
         }
         unblock_socket(fd);

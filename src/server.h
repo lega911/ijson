@@ -12,6 +12,7 @@
 #include "workerlist.h"
 
 
+#define MAX_CONNECTS 16384
 #define MAX_EVENTS 256
 #define BUF_SIZE 16384
 
@@ -74,7 +75,7 @@ public:
     bool jsonrpc2 = false;
     int fake_fd = 0;
     std::vector<NetFilter> net_filter;
-    Connect *connections[MAX_EVENTS];
+    Connect *connections[MAX_CONNECTS];
     Loop **loops;
     std::mutex global_lock;
     u64 stat_connect = 0;
@@ -83,7 +84,7 @@ public:
     std::vector<char*> _free_list;
 
     Server() : _mapper(this) {
-        memset(connections, 0, MAX_EVENTS * sizeof(Connect*));
+        memset(connections, 0, MAX_CONNECTS * sizeof(Connect*));
     };
 
     void start();

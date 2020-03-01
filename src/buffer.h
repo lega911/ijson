@@ -259,16 +259,15 @@ public:
     void add(const ISlice &s) {
         add(s.ptr(), s.size());
     }
-    void add_number(int n) {
-        resize(_size + 12);
-        
-        char s[12];
+    void add_number(i64 n) {
+        resize(_size + 20);
+
+        char s[20];
         int d;
-        int i=11;
+        int i=19;
         bool negative = false;
-        if(n == 0) {
-            s[i--] = '0';
-        } else if(n < 0) {
+        if(n == 0) s[i--] = '0';
+        else if(n < 0) {
             n = -n;
             negative = true;
         }
@@ -277,10 +276,8 @@ public:
             s[i--] = d + '0';
             n = n / 10;
         }
-        if(negative) {
-            s[i--] = '-';
-        }
-        add(&s[i + 1], 11 - i);
+        if(negative) s[i--] = '-';
+        add(&s[i + 1], 19 - i);
     }
     void add_hex(u64 n) {
         if(!n) {
