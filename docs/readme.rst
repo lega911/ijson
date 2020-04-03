@@ -237,4 +237,4 @@ FAQ
 Threads, how and what's for?
   On small servers Inverted Json can reach maximum performace with 1 thread (default mode), but if you find that Inverted Json reaches 100% usage of one core, then it make sence to start Inverted Json in multithread mode, you can define number of threads with option **--threads**
 
-If you have any question or proposal you can contact me lega911@gmail.com or via `telegram <https://t.me/olegnechaev/>`_.
+If you have any question or proposal you can contact me lega911@gmail.com or via `telegram <https://t.me/lega00/>`_.
