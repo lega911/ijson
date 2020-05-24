@@ -115,9 +115,9 @@ private:
     int http_version;  // 10, 11
     Buffer buffer;
     Buffer path;
-    Slice header_option;
     void _set_type(ISlice &name);
 public:
+    Slice header_option;
     Buffer name;
     RequestType type = RequestType::none;
     Status status = Status::net;

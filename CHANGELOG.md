@@ -6,6 +6,7 @@
 * Call a certain worker by id, header `"Worker-ID: <worker id>"`
 * `/rpc/details` displays worker ids
 * Set worker id via header `"Set-ID: <worker id>"`
+* An option for client request not to wait a worker, a header `"Option: if present"`
 
 ## 0.3
 * Call a command without await a response: header `Option: async`
