@@ -630,3 +630,56 @@ def test11():
     get('/test11', type='delete')
     time.sleep(0.1)
     assert count == 5
+
+
+@mem('/test12')
+def test12_if_present():
+    result = []
+    def push(x):
+        result.append(x)
+
+    @run(0)
+    def worker():
+        s = requests.Session()
+        r = s.get(L + '/test12', headers={'Type': 'worker'})
+        while True:
+            if r.text == 'stop':
+                s.post(L, data='ok', headers={'Option': 'stop'})
+                break
+            time.sleep(0.2)
+            push('w' + r.text)
+            time.sleep(0.2)
+            r = s.post(L, data=b'ok')
+        push('stop')
+
+    @run(0.1)
+    def command1():
+        push(1)
+        r = post('/test12', data='1', headers={'Option': 'if present'})
+        push((1, r.status_code, r.text))
+
+    @run(0.2)
+    def command1():
+        push(2)
+        r = post('/test12', data='2', headers={'Option': 'if present'})
+        push((2, r.status_code, r.text))
+
+    @run(0.3)
+    def command1():
+        push(3)
+        r = post('/test12', data='3', headers={'Option': 'if present'})
+        push((3, r.status_code, r.text))
+
+    time.sleep(0.4)
+    push(4)
+    r = post('/test12', data='4', headers={'Option': 'if present'})
+    push((4, r.status_code, r.text))
+
+    assert tuple(result) == (1, 2, 3, 'w1', 4, (1, 200, 'ok'), 'w2', (2, 200, 'ok'), 'w3', (3, 200, 'ok'), 'w4', (4, 200, 'ok'))
+
+    result = []
+    assert post('/test12', data='stop').text == 'ok'
+    assert result == ['stop']
+
+    assert get('/test12', headers={'Option': 'if present'}).status_code == 204
+    assert get('/test12', headers={'Option': 'if present'}).status_code == 204

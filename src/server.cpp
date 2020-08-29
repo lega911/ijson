@@ -836,7 +836,7 @@ int Loop::client_request(ISlice name, Connect *client) {
         }
         if(server->log & 32) worker->start_time = get_time();
     } else {
-        if(client->header_option == "if present") {
+        if(client->header_option == "if present" && !ql->workers.head) {
             client->send.status("204 No Content")->done(1);
             return 0;
         }
