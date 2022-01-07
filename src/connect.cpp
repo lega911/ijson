@@ -68,6 +68,7 @@ void Connect::on_send() {
 
 
 void Connect::on_recv(char *buf, int size) {
+    if(ping) ping_timeout = get_time_sec() + ping;
     if(!(status == Status::net || (status == Status::worker_wait_result && noid) || (status == Status::worker_mode_async && worker_mode))) {
         if(server->log & 4) std::cout << ltime() << "connect " << (void*)this << ", warning: data is come, but connection is not ready\n";
         buffer.add(buf, size);
@@ -261,6 +262,10 @@ void Connect::read_header(Slice &data) {
     } else if(data.starts_with_lc("set-id: ")) {
         data.remove(8);
         connection_id.set(data);
+    } else if(data.starts_with_lc("timeout: ")) {
+        data.remove(9);
+        ping = data.atoi();
+        ping_timeout = get_time_sec() + ping;
     }
 }
 
@@ -598,6 +603,7 @@ Another options (header):\n\
   \"priority: 15\" - set priority for request\n\
   \"set-id: 15\" - set id for worker\n\
   \"worker-id: 15\" - call worker with specific id\n\
+  \"timeout: 60\" - timeout for worker in sec\n\
 \n\
 rpc/details  - get details in json\n\n";
 

@@ -12,7 +12,7 @@ u64 get_time() {
     return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
 }
 
-long get_time_sec() {
+u32 get_time_sec() {
     struct timeval currentTime;
     gettimeofday(&currentTime, NULL);
     return currentTime.tv_sec;

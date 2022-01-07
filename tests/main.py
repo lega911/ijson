@@ -306,6 +306,7 @@ def test6_priority():
     worker = requests.Session()
     for _ in range(9):
         task = worker.post(L + '/rpc/add', json={'name': 'test6', 'option': 'no_id'}, timeout=TIMEOUT).json()
+        time.sleep(0.1)
         worker.post(L + '/rpc/result', json={'result': task['request']})
     time.sleep(0.5)
     assert result == [0, 2, 9, 4, 6, 1, 8, 7, 5, 3]

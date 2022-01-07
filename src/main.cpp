@@ -36,6 +36,7 @@ Another options (header):\n\
   \"priority: 15\" - set priority for request\n\
   \"set-id: 15\" - set id for worker\n\
   \"worker-id: 15\" - call worker with specific id\n\
+  \"timeout: 60\" - timeout for worker in sec\n\
 \n\
 rpc/details  - get details in json\n\
 \n\

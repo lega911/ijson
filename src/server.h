@@ -140,6 +140,7 @@ public:
 
     std::vector<Connect*> _queue_to_send;
     void _perform_to_send();
+    void _check_timeout();
 
     u64 stat_request = 0;
     u64 stat_call = 0;

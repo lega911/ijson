@@ -338,8 +338,9 @@ void Loop::_loop() {
 
     eitem events[MAX_EVENTS];
     char buf[BUF_SIZE];
+    int countdown = 100;
     while(true) {
-        int nready = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+        int nready = epoll_wait(epollfd, events, MAX_EVENTS, 10);
         if(nready == -1) {
             if(server->log & 1) std::cout << ltime() << "epoll_wait error: " << errno << std::endl;
             continue;
@@ -399,6 +400,14 @@ void Loop::_loop() {
             if(conn->go_loop) need_to_migrate = true;
         }
 
+        if(!_nloop) {
+            countdown--;
+            if(countdown <= 0) {
+                countdown = 100;
+                _check_timeout();
+            }
+        }
+
         _perform_to_send();
         if(need_to_migrate) _migrate_send();
         _delete_connections();
@@ -416,6 +425,42 @@ void Loop::_perform_to_send() {
     _queue_to_send.clear();
 };
 
+void Loop::_check_timeout() {
+    if(!server->global_lock.try_lock()) return;
+
+    u32 now = get_time_sec();
+    for(const auto &ql : server->_queue_list) {
+        if(!ql) continue;
+
+        LOCK _l(ql->mutex);
+
+        for(int i=0;i<server->threads;i++) {
+            for(const auto &worker : ql->queue[i].workers) {
+                if(!worker->ping) continue;
+                if(worker->ping_timeout > now) continue;
+                if(worker->is_closed()) continue;
+
+                bool busy = true;
+                if(worker->status == Status::worker_wait_job) {
+                    worker->mutex.lock();
+                    if(worker->status == Status::worker_wait_job) {
+                        worker->status = Status::busy;
+                        busy = false;
+                    }
+                    worker->mutex.unlock();
+                }
+                if(busy) continue;
+
+                if(worker->worker_mode) worker->status = Status::worker_mode_async;
+                else worker->status = Status::net;
+                worker->send.status("408 Timeout")->done();
+                worker->ping_timeout = now + worker->ping;
+                if(server->log & 8) std::cout << ltime() << "408 Timeout\n";
+            }
+        }
+    }
+    server->global_lock.unlock();
+};
 
 void Loop::_delete_connections() {
     if(!dead_connections.size()) return;

@@ -128,6 +128,8 @@ public:
     bool no_response = false;
     bool worker_mode = false;
     int priority = 0;
+    u32 ping = 0;
+    u32 ping_timeout = 0;
 
     Buffer connection_id;
     Buffer required_worker;

@@ -268,8 +268,8 @@ def test6_priority():
     worker = requests.Session()
     for _ in range(9):
         task = worker.post(L + '/test6', headers={'Type': 'get+'}, timeout=TIMEOUT).json()
+        time.sleep(0.1)
         worker.post(L, json={'result': task['request']}, headers={'Type': 'result'}, timeout=TIMEOUT)
-        time.sleep(0.05)
     time.sleep(0.5)
     assert result == [0, 2, 9, 4, 6, 1, 8, 7, 5, 3]
 
@@ -679,7 +679,79 @@ def test12_if_present():
 
     result = []
     assert post('/test12', data='stop').text == 'ok'
+    time.sleep(0.1)
     assert result == ['stop']
 
     assert get('/test12', headers={'Option': 'if present'}).status_code == 204
     assert get('/test12', headers={'Option': 'if present'}).status_code == 204
+
+
+@mem('/test13')
+def test13_timeout():
+    result = []
+    def push(x):
+        result.append(x)
+
+    @run(0)
+    def worker():
+        s = requests.Session()
+        r = s.get(L + '/test13', headers={'Type': 'worker', 'timeout': '3'})
+        while True:
+            if r.status_code == 408:
+                push('timeout')
+                r = s.post(L)
+                continue
+            if r.text == 'stop':
+                s.post(L, data='ok', headers={'Option': 'stop'})
+                break
+            push('w' + r.text)
+            r = s.post(L, data=b'ok')
+        push('stop')
+
+    time.sleep(0.1)
+    assert post('/test13', data='test').text == 'ok'
+    time.sleep(0.1)
+    assert post('/test13', data='test2').text == 'ok'
+    time.sleep(4.5)
+    assert post('/test13', data='test3').text == 'ok'
+    time.sleep(0.1)
+    assert post('/test13', data='test4').text == 'ok'
+    time.sleep(8)
+    assert post('/test13', data='stop', timeout=10).text == 'ok'
+    time.sleep(0.1)
+    assert result == ['wtest', 'wtest2', 'timeout', 'wtest3', 'wtest4', 'timeout', 'timeout', 'stop']
+
+
+@mem('/test13b')
+def test13b_timeout():
+    result = []
+    def push(x):
+        result.append(x)
+
+    @run(0)
+    def worker():
+        s = requests.Session()
+        while True:
+            r = s.post(L + '/test13b', headers={'Type': 'get+', 'timeout': '3'})
+            if r.status_code == 408:
+                push('timeout')
+                continue
+            if r.text == 'stop':
+                s.post(L, data='ok', headers={'Type': 'result'})
+                break
+            push('w' + r.text)
+            s.post(L, data='ok', headers={'Type': 'result'})
+        push('stop')
+
+    time.sleep(0.1)
+    assert post('/test13b', data='test').text == 'ok'
+    time.sleep(0.1)
+    assert post('/test13b', data='test2').text == 'ok'
+    time.sleep(4.5)
+    assert post('/test13b', data='test3').text == 'ok'
+    time.sleep(0.1)
+    assert post('/test13b', data='test4').text == 'ok'
+    time.sleep(8)
+    assert post('/test13b', data='stop', timeout=10).text == 'ok'
+    time.sleep(0.1)
+    assert result == ['wtest', 'wtest2', 'timeout', 'wtest3', 'wtest4', 'timeout', 'timeout', 'stop']
